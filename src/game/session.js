@@ -21,7 +21,7 @@ export function chooseStartingPlayer(drawnLetters,language){
   return winners.length===1?{tie:false,playerIndex:winners[0]}:{tie:true,playerIndices:winners};
 }
 
-const makeId=(random)=>`tile-${Math.floor(random()*1e12).toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+const makeId=(random)=>`tile-${Math.floor(random()*1e12).toString(36)}-${Math.floor(random()*1e9).toString(36)}`;
 const addIds=(tiles,random)=>tiles.map(tile=>({...tile,id:makeId(random)}));
 
 function shuffleInPlace(items,random){
@@ -58,7 +58,7 @@ export function createGameSession(language, playerNames, random=Math.random) {
     consecutivePasses:0,status:'playing',winner:null,history:[]};
 }
 
-export async function commitTurn(session, placements, dictionaryValidator) {
+export async function commitTurn(session, placements, dictionaryValidator, random=Math.random) {
   if(session.status!=='playing') return {ok:false,reason:'game-finished'};
   const player=session.players[session.currentPlayer];
   const rackIds=new Set(player.rack.map(tile=>tile.id));
@@ -72,7 +72,7 @@ export async function commitTurn(session, placements, dictionaryValidator) {
   const used=new Set(placements.map(p=>p.tile.id));
   const remainingRack=player.rack.filter(tile=>!used.has(tile.id));
   const draw=drawTiles(session.bag,7-remainingRack.length);
-  const nextRack=[...remainingRack,...addIds(draw.drawn,Math.random)];
+  const nextRack=[...remainingRack,...addIds(draw.drawn,random)];
   const nextPlayers=session.players.map((p,index)=>index===session.currentPlayer
     ? {...p,score:p.score+applied.total,rack:nextRack} : p);
   const next={...session,players:nextPlayers,board:applied.board,bag:draw.remaining,consecutivePasses:0,
