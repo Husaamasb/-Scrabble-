@@ -267,3 +267,30 @@ grant execute on function public.start_scrabble_room(uuid) to authenticated;
 -- Remove the former room-specific editor and any saved custom layouts.
 drop function if exists public.save_scrabble_room_layout(uuid, jsonb);
 alter table public.rooms drop column if exists premium_layout;
+
+
+-- Private per-player state: never put racks or hidden tiles in rooms.game_state.
+-- A room member can read and write only their own private row.
+create table if not exists public.room_player_private (
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  private_state jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key(room_id,user_id)
+);
+
+alter table public.room_player_private enable row level security;
+drop policy if exists "players read only their private room state" on public.room_player_private;
+create policy "players read only their private room state"
+  on public.room_player_private for select to authenticated
+  using(user_id=auth.uid() and public.is_scrabble_room_member(room_id));
+drop policy if exists "players insert only their private room state" on public.room_player_private;
+create policy "players insert only their private room state"
+  on public.room_player_private for insert to authenticated
+  with check(user_id=auth.uid() and public.is_scrabble_room_member(room_id));
+drop policy if exists "players update only their private room state" on public.room_player_private;
+create policy "players update only their private room state"
+  on public.room_player_private for update to authenticated
+  using(user_id=auth.uid() and public.is_scrabble_room_member(room_id))
+  with check(user_id=auth.uid() and public.is_scrabble_room_member(room_id));
+grant select, insert, update on public.room_player_private to authenticated;
