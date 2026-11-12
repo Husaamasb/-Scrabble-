@@ -9,6 +9,7 @@ export default function LocalTable({ language, onExit }) {
   const [session,setSession]=useState(null);
   const [pending,setPending]=useState([]);
   const [selected,setSelected]=useState(null);
+  const [blankChoice,setBlankChoice]=useState('');
   const [exchange,setExchange]=useState([]);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
@@ -29,11 +30,12 @@ export default function LocalTable({ language, onExit }) {
   const place=(index)=>{
     if(selected===null||visibleBoard[index]||busy)return;
     const tile=player.rack.find(t=>t.id===selected);if(!tile)return;
-    if(tile.isBlank){setMessage(ar?'الجوكر يحتاج اختيار الحرف قبل وضعه. اختره من الرف أولاً.':'Choose the blank tile letter before placing it.');return;}
-    const next=[...pending,{row:Math.floor(index/15),col:index%15,tile}];
+    if(tile.isBlank&&!blankChoice.trim()){setMessage(ar?'اكتب الحرف الذي يمثله الجوكر أولاً.':'Enter the letter represented by the blank tile first.');return;}
+    const placedTile=tile.isBlank?{...tile,blankAs:blankChoice.trim()}:tile;
+    const next=[...pending,{row:Math.floor(index/15),col:index%15,tile:placedTile}];
     const check=evaluateMove(session.board,next);
     if(check.reason==='occupied-square'||check.reason==='invalid-placement')return;
-    setPending(next);setSelected(null);setMessage('');
+    setPending(next);setSelected(null);setBlankChoice('');setMessage('');
   };
   const undo=()=>{setPending(p=>p.slice(0,-1));setMessage('');};
   const confirm=async()=>{
@@ -57,6 +59,7 @@ export default function LocalTable({ language, onExit }) {
     {session.status==='playing'&&<section className="local-controls">
       <h3>{ar?'قطع ':'Rack — '}{player.name}</h3>
       <div className="rack">{player.rack.map(tile=><button key={tile.id} className={'tile '+(selected===tile.id?'chosen':'')+(exchange.includes(tile.id)?' chosen':'')} disabled={busy||placedIds.has(tile.id)} onClick={()=>{if(pending.length===0&&exchange.length>0){setExchange(v=>v.includes(tile.id)?v.filter(x=>x!==tile.id):[...v,tile.id]);}else setSelected(tile.id);}}><b>{tile.letter}</b><small>{tile.points}</small></button>)}</div>
+      {selected&&player.rack.find(t=>t.id===selected)?.isBlank&&<label className="blank-choice">{ar?'الحرف الذي يمثله الجوكر':'Letter for blank tile'}<input value={blankChoice} onChange={e=>setBlankChoice(ar?e.target.value:e.target.value.toUpperCase())} maxLength={ar?3:1}/></label>}
       <div className="local-actions"><button className="primary" onClick={confirm} disabled={busy||!pending.length}>{ar?'تأكيد الكلمة':'Confirm move'}</button><button onClick={undo} disabled={busy||!pending.length}>{ar?'تراجع عن قطعة':'Undo tile'}</button><button onClick={()=>{setPending([]);setSelected(null);}} disabled={busy||!pending.length}>{ar?'إلغاء الحركة':'Cancel move'}</button><button onClick={()=>setExchange(v=>v.length?[]:player.rack.map(t=>t.id))} disabled={busy||pending.length>0||session.bag.length<player.rack.length}>{ar?'تحديد قطع للتبديل':'Select exchange tiles'}</button><button onClick={doExchange} disabled={busy||!exchange.length}>{ar?'تبديل المحدد':'Exchange selected'}</button><button onClick={doPass} disabled={busy}>{ar?'تجاوز الدور':'Pass turn'}</button></div>
       <p className="local-bag">{ar?'القطع المتبقية في الصندوق: ':'Tiles left in bag: '}{session.bag.length}</p>
     </section>}
