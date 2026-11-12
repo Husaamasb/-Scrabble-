@@ -294,3 +294,69 @@ create policy "players update only their private room state"
   using(user_id=auth.uid() and public.is_scrabble_room_member(room_id))
   with check(user_id=auth.uid() and public.is_scrabble_room_member(room_id));
 grant select, insert, update on public.room_player_private to authenticated;
+
+
+-- Atomically publish the visible match state and save only the caller's private rack.
+-- The client must omit all hidden tile data from public_state.
+create or replace function public.submit_scrabble_turn(
+  target_room uuid,
+  expected_revision integer,
+  public_state jsonb,
+  private_state jsonb
+)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target public.rooms;
+  player_ids jsonb;
+  turn_index integer;
+  next_state jsonb;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  if jsonb_typeof(public_state) <> 'object' or jsonb_typeof(private_state) <> 'object' then
+    raise exception 'Invalid game state';
+  end if;
+  if public_state ?| array['rack','racks','bag','tiles','private_state'] then
+    raise exception 'Hidden tile data must not be included in public state';
+  end if;
+
+  select * into target from public.rooms where id=target_room for update;
+  if not found or target.status <> 'playing' then raise exception 'Match is not active'; end if;
+  if not public.is_scrabble_room_member(target_room) then raise exception 'Room membership required'; end if;
+  if coalesce((target.game_state->>'revision')::integer,0) <> expected_revision then
+    raise exception 'Game state changed; refresh and try again';
+  end if;
+
+  player_ids := target.game_state->'player_ids';
+  turn_index := coalesce((target.game_state->>'turn_index')::integer,0);
+  if jsonb_typeof(player_ids) <> 'array' or jsonb_array_length(player_ids)=0 then
+    raise exception 'Match player order is missing';
+  end if;
+  if player_ids->>turn_index <> auth.uid()::text then
+    raise exception 'It is not your turn';
+  end if;
+
+  next_state := public_state
+    || jsonb_build_object(
+      'player_ids', player_ids,
+      'revision', expected_revision + 1
+    );
+
+  update public.rooms
+    set game_state=next_state, updated_at=now()
+    where id=target_room
+    returning * into target;
+
+  insert into public.room_player_private(room_id,user_id,private_state,updated_at)
+    values(target_room,auth.uid(),private_state,now())
+  on conflict(room_id,user_id) do update
+    set private_state=excluded.private_state, updated_at=now();
+
+  return target;
+end;
+$$;
+
+grant execute on function public.submit_scrabble_turn(uuid,integer,jsonb,jsonb) to authenticated;
