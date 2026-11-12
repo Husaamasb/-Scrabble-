@@ -3,10 +3,18 @@
   "short_name": "Scrabble",
   "description": "Arabic and English Scrabble word game",
   "lang": "ar",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#eadcc4",
-  "theme_color": "#38251b"
+  "theme_color": "#38251b",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
