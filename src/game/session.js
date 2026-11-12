@@ -1,5 +1,5 @@
 import { applyMove, evaluateMove } from './engine.js';
-import { createTileBag, drawTiles, exchangeTiles, settleEndgame } from './tiles.js';
+import { createTileBag, drawTiles, exchangeTiles } from './tiles.js';
 import { validateWords } from './wordValidator.js';
 
 const makeId=(random)=>`tile-${Math.floor(random()*1e12).toString(36)}-${Math.random().toString(36).slice(2,7)}`;
@@ -68,8 +68,7 @@ export function passTurn(session) {
   if(session.status!=='playing') return {ok:false,reason:'game-finished'};
   const passes=session.consecutivePasses+1;
   if(passes>=session.players.length*2){
-    const finalScores=settleEndgame(session.players.map(p=>p.score),session.players.map(p=>p.rack),-1);
-    // Passing ends a practice session without a finisher bonus: subtract each rack from its owner.
+    // If everyone passes twice in succession, subtract each player's remaining rack.
     const players=session.players.map((p,index)=>({...p,score:p.score-p.rack.reduce((sum,t)=>sum+t.points,0)}));
     const winner=[...players].sort((a,b)=>b.score-a.score)[0].id;
     return {ok:true,session:{...session,players,status:'finished',winner,consecutivePasses:passes}};
