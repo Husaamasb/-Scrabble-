@@ -11,6 +11,9 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const [difficulty,setDifficulty]=useState(3);
   const [turnSeconds,setTurnSeconds]=useState(60);
   const [remainingSeconds,setRemainingSeconds]=useState(60);
+  const [premiumLayout,setPremiumLayout]=useState(()=>[...PREMIUM]);
+  const [editingPremium,setEditingPremium]=useState(false);
+  const [premiumTool,setPremiumTool]=useState('TW');
   const [session,setSession]=useState(()=>loadLocalSession(language));
   const [pending,setPending]=useState([]);
   const [selected,setSelected]=useState(null);
@@ -22,7 +25,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
   useEffect(()=>{try{if(session)globalThis.localStorage?.setItem('scrabble:local-session:'+language,JSON.stringify({version:1,session}));else globalThis.localStorage?.removeItem('scrabble:local-session:'+language);}catch{}},[session,language]);
   const ar=language==='ar';
-  const start=()=>{setSession(createGameSession(language,botMode?['أنت','البوت']:names.slice(0,count)));setPending([]);setSelected(null);setExchange([]);setMessage('');};
+  const start=()=>{setSession(createGameSession(language,botMode?['أنت','البوت']:names.slice(0,count),Math.random,premiumLayout));setPending([]);setSelected(null);setExchange([]);setMessage('');};
   useEffect(()=>{
     if(!botMode||!session||session.status!=='playing'||session.currentPlayer!==1||busy)return;
     let cancelled=false;
@@ -61,6 +64,15 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     <h2>{ar?'لعب جماعي على نفس الجهاز':'Same-device multiplayer'}</h2>
     <p>{ar?'اختاروا عدد اللاعبين ومدة الدور قبل بدء المباراة.':'Choose the player count and turn duration before starting.'}</p>
     <label>{botMode?(ar?'مستوى البوت':'Bot level'):(ar?'عدد اللاعبين':'Players')} <select value={botMode?difficulty:count} onChange={e=>botMode?setDifficulty(Number(e.target.value)):setCount(Number(e.target.value))}>{(botMode?[{value:1,ar:'سهل جدًا',en:'Very easy'},{value:2,ar:'سهل',en:'Easy'},{value:3,ar:'متوسط',en:'Medium'},{value:4,ar:'صعب',en:'Hard'},{value:5,ar:'صعب جدًا',en:'Very hard'}]:[2,3,4].map(n=>({value:n,ar:String(n),en:String(n)}))).map(option=><option key={option.value} value={option.value}>{ar?option.ar:option.en}</option>)}</select></label>
+    {!botMode&&<div className="premium-editor">
+      <button type="button" onClick={()=>setEditingPremium(v=>!v)}>{editingPremium?(ar?'إخفاء تخصيص اللوحة':'Hide board editor'):(ar?'تخصيص المربعات الخاصة':'Customize premium squares')}</button>
+      {editingPremium&&<>
+        <p>{ar?'اختر نوع المربع ثم اضغط على أي خانة في اللوحة لتغييرها.':'Choose a square type, then tap any board cell to apply it.'}</p>
+        <div className="premium-tools">{[{v:'TW',ar:'ثلاثة أضعاف الكلمة',en:'Triple word'},{v:'DW',ar:'ضعف الكلمة',en:'Double word'},{v:'TL',ar:'ثلاثة أضعاف الحرف',en:'Triple letter'},{v:'DL',ar:'ضعف الحرف',en:'Double letter'},{v:'',ar:'إزالة المربع الخاص',en:'Clear square'}].map(x=><button type="button" className={premiumTool===x.v?'active':''} key={x.v||'clear'} onClick={()=>setPremiumTool(x.v)}>{ar?x.ar:x.en}</button>)}</div>
+        <div className="premium-editor-grid">{premiumLayout.map((type,index)=><button type="button" key={index} className={'premium-edit-cell '+(type||'plain').toLowerCase()} aria-label={(ar?'مربع ':'Square ')+(index+1)+' '+(type||'normal')} onClick={()=>setPremiumLayout(layout=>layout.map((v,i)=>i===index?premiumTool:v))}>{type||''}</button>)}</div>
+        <button type="button" onClick={()=>setPremiumLayout([...PREMIUM])}>{ar?'استعادة التوزيع الأصلي':'Restore standard layout'}</button>
+      </>}
+    </div>}
     {!botMode&&<label>{ar?'مدة دور كل لاعب':'Turn duration'} <select value={turnSeconds} onChange={e=>setTurnSeconds(Number(e.target.value))}>{[{value:30,ar:'30 ثانية',en:'30 seconds'},{value:60,ar:'دقيقة واحدة',en:'1 minute'},{value:90,ar:'دقيقة ونصف',en:'90 seconds'},{value:120,ar:'دقيقتان',en:'2 minutes'},{value:0,ar:'بدون مؤقت',en:'No timer'}].map(o=><option key={o.value} value={o.value}>{ar?o.ar:o.en}</option>)}</select></label>}
     <button className="primary" onClick={start}>{ar?'ابدأ المباراة':'Start match'}</button>
     <button onClick={onExit}>{ar?'رجوع':'Back'}</button>
@@ -74,7 +86,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     if(tile.isBlank&&!blankChoice.trim()){setMessage(ar?'اكتب الحرف الذي يمثله الجوكر أولاً.':'Enter the letter represented by the blank tile first.');return;}
     const placedTile=tile.isBlank?{...tile,blankAs:blankChoice.trim()}:tile;
     const next=[...pending,{row:Math.floor(index/15),col:index%15,tile:placedTile}];
-    const check=evaluateMove(session.board,next);
+    const check=evaluateMove(session.board,next,session.premiumLayout||PREMIUM);
     if(check.reason==='occupied-square'||check.reason==='invalid-placement')return;
     setPending(next);setSelected(null);setBlankChoice('');setMessage('');
   };
@@ -97,7 +109,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     {session.status==='playing'&&turnSeconds>0&&!(botMode&&session.currentPlayer===1)&&<div className="turn-timer" role="timer"><span>{ar?'الوقت المتبقي للدور':'Time left in turn'}</span><strong>{Math.floor(remainingSeconds/60)}:{String(remainingSeconds%60).padStart(2,'0')}</strong></div>}
     <div className="local-scores">{session.players.map((p,i)=><div className={i===session.currentPlayer?'current':''} key={p.id}><span>{p.name}</span><b>{p.score}</b><small>{ar?'قطع':'Tiles'}: {p.rack.length}</small></div>)}</div>
     {session.status==='finished'&&<><h2 className="winner">{ar?'الفائز: ':'Winner: '}{session.players.find(p=>p.id===session.winner)?.name}</h2><button className="primary" onClick={()=>setSession(null)}>{ar?'ابدأ مباراة جديدة':'Start a new match'}</button></>}
-    <div className="local-board-area"><div className="board">{cells.map(i=>{const tile=visibleBoard[i];const p=PREMIUM[i]||'';return <button key={i} className={'cell '+(tile?'filled':p.toLowerCase())} disabled={busy||session.status==='finished'} onClick={()=>place(i)}>{tile?<><b>{tile.blankAs||tile.letter}</b><small>{tile.points}</small></>:p==='TW'?'3W':p==='DW'?'2W':p==='TL'?'3L':p==='DL'?'2L':i===112?'★':''}</button>;})}</div></div>
+    <div className="local-board-area"><div className="board">{cells.map(i=>{const tile=visibleBoard[i];const p=(session.premiumLayout||PREMIUM)[i]||'';return <button key={i} className={'cell '+(tile?'filled':p.toLowerCase())} disabled={busy||session.status==='finished'} onClick={()=>place(i)}>{tile?<><b>{tile.blankAs||tile.letter}</b><small>{tile.points}</small></>:p==='TW'?'3W':p==='DW'?'2W':p==='TL'?'3L':p==='DL'?'2L':i===112?'★':''}</button>;})}</div></div>
     {session.status==='playing'&&<section className="local-controls">
       <h3>{ar?'قطع ':'Rack — '}{player.name}</h3>
       <div className="rack">{player.rack.map(tile=><button key={tile.id} className={'tile '+(selected===tile.id?'chosen':'')+(selected===tile.id||exchange.includes(tile.id)?' chosen':'')} disabled={busy||placedIds.has(tile.id)} onClick={()=>{if(pending.length===0&&exchange.length>0){setExchange(v=>v.includes(tile.id)?v.filter(x=>x!==tile.id):[...v,tile.id]);}else setSelected(tile.id);}}><b>{tile.letter}</b><small>{tile.points}</small></button>)}</div>
