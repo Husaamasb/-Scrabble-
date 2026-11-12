@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { commitTurn, exchangeFromRack, passTurn } from '../src/game/session.js';
+import { createGameSession, commitTurn, exchangeFromRack, passTurn } from '../src/game/session.js';
 
 const tile=(id,letter,points)=>({id,letter,points});
 function sampleSession(){
@@ -51,4 +51,16 @@ test('pass advances the turn and finishes after two complete cycles',()=>{
   const final=passTurn(session);
   assert.equal(final.session.status,'finished');
   assert.ok(final.session.winner);
+});
+
+test('new sessions deal seven tiles to each player and preserve the correct bag size',()=>{
+  const game=createGameSession('en',['One','Two'],()=>0.43);
+  assert.equal(game.players[0].rack.length,7);
+  assert.equal(game.players[1].rack.length,7);
+  assert.equal(game.bag.length,86);
+  assert.equal(new Set(game.players.flatMap(p=>p.rack.map(t=>t.id))).size,14);
+  const arabic=createGameSession('ar',['One','Two','Three'],()=>0.31);
+  assert.equal(arabic.players.reduce((sum,p)=>sum+p.rack.length,0),21);
+  assert.equal(arabic.bag.length,89);
+  assert.throws(()=>createGameSession('en',['Only one']),/2 to 4 players/);
 });
