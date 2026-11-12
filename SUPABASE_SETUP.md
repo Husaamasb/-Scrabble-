@@ -22,7 +22,7 @@ Password recovery uses Supabase's secure recovery email link.
 
 In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
 
-## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and saving the host's 15×15 premium-square layout.\n\n5. Add the public project settings to GitHub Pages
+## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start,.\n\n5. Add the public project settings to GitHub Pages
 
 In the GitHub repository, open **Settings → Secrets and variables → Actions → Variables** and create:
 
