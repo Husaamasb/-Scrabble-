@@ -28,7 +28,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
 - Playable same-device multiplayer mode for 2–4 players, with starting-player draw, private turn handoff, scoring, pass/exchange flow, match history, winner display, and automatic local match recovery.
-- Interactive 15×15 premium-square editor for new local matches: triple/double word, triple/double letter, clearing squares, restoring the standard layout, and persisting the chosen layout in the match session. The bot and scoring engine use that selected layout.
+- Fixed 15×15 premium-square layout shared by Arabic and English boards; only tile letters and language labels differ. The host and players cannot edit multiplier positions.
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest and service-worker shell cache.
@@ -39,7 +39,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 
 The app includes a separate playable local match screen for same-device multiplayer and bot matches. Networked multiplayer and account-backed features are not complete. The following work remains:
 
-- Online matchmaking, networked rooms and host synchronization (the current room UI is a local prototype; custom board layouts are not yet synced between online players), invites, tournaments, and daily challenges.
+- Online matchmaking, networked rooms and host synchronization (the current room UI is a local prototype; premium-square positions are fixed and identical in Arabic and English rooms), invites, tournaments, and daily challenges.
 - Final hinged wooden chest animation and the original user-provided logo asset.
 - Cloud backend activation requires a Supabase project, running `supabase/schema.sql`, and setting the two public Vite variables described in `SUPABASE_SETUP.md`.
 - Full synchronized Scrabble gameplay inside network rooms, reconnect handling, tournaments, push notifications, and cloud match history are not complete.
