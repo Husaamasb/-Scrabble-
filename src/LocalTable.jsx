@@ -68,7 +68,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
       const data=JSON.parse(globalThis.localStorage?.getItem('scrabble:dashboard:v1')||'{}');
       const human=session.players[0],bot=session.players[1];
       const delta=human.score>bot.score?20:human.score===bot.score?15:-5;
-      data.xp=Math.max(0,(Number(data.xp)||0)+delta);
+      data.xp=(Number(data.xp)||0)+delta;
       globalThis.localStorage?.setItem('scrabble:dashboard:v1',JSON.stringify(data));
       globalThis.localStorage?.setItem(awardKey,'1');
       setMessage(ar?(delta===20?'فزت بالمباراة! حصلت على 20 XP.':delta===15?'تعادل! حصلت على 15 XP.':'انتهت المباراة. تم خصم 5 XP.'):(delta===20?'You won! +20 XP.':delta===15?'Draw! +15 XP.':'Match lost. -5 XP.'));
