@@ -27,6 +27,8 @@ GitHub Actions runs the automated tests and production build on every push to `m
 - English tile distribution: 100 tiles, matching the supplied table.
 - Arabic tile distribution: 110 tiles, matching the supplied table, including separate hamza forms.
 - Tile draw/exchange helpers and endgame leftover-tile settlement.
+- Match-session state transitions for 2–4 players, dictionary-gated turn commits, pass/exchange flow, and starting-player draw comparison.
+- Versioned local save/load/delete plus JSON backup import/export utilities.
 - Installable web-app manifest and offline app-shell service worker.
 - Automated tests for the game engine, tile distributions, endgame scoring, and PWA shell.
 
