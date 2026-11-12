@@ -231,3 +231,34 @@ begin
   alter publication supabase_realtime add table public.rooms;
 exception when duplicate_object then null;
 end $$;
+
+
+-- Room readiness and host-controlled start.
+create or replace function public.set_scrabble_ready(target_room uuid, ready_state boolean)
+returns void language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null or not public.is_scrabble_room_member(target_room) then raise exception 'Room membership required'; end if;
+  update public.room_members set is_ready=ready_state where room_id=target_room and user_id=auth.uid();
+end;
+$$;
+
+create or replace function public.start_scrabble_room(target_room uuid)
+returns public.rooms language plpgsql security definer set search_path = public
+as $$
+declare target public.rooms; member_count int; ready_count int;
+begin
+  select * into target from public.rooms where id=target_room for update;
+  if not found then raise exception 'Room not found'; end if;
+  if target.host_id <> auth.uid() then raise exception 'Only the host can start the match'; end if;
+  if target.status <> 'waiting' then raise exception 'Room has already started'; end if;
+  select count(*), count(*) filter (where is_ready or user_id=auth.uid()) into member_count, ready_count from public.room_members where room_id=target_room;
+  if member_count < 2 then raise exception 'At least two players are required'; end if;
+  if member_count <> ready_count then raise exception 'All players must be ready'; end if;
+  update public.rooms set status='playing', game_state=jsonb_build_object('phase','initial_draw','player_ids',(select jsonb_agg(user_id order by seat) from public.room_members where room_id=target_room),'board',jsonb_build_array(),'turn_index',0,'revision',1), updated_at=now() where id=target_room returning * into target;
+  return target;
+end;
+$$;
+
+grant execute on function public.set_scrabble_ready(uuid,boolean) to authenticated;
+grant execute on function public.start_scrabble_room(uuid) to authenticated;
