@@ -14,6 +14,7 @@ function makeTileState(lang){const bag=createTileBag(lang);const draw=drawTiles(
 export default function App(){
   const [savedAtStart]=useState(loadActiveGame);
   const [localMode,setLocalMode]=useState(false);
+  const [botMode,setBotMode]=useState(false);
   const [lang,setLang]=useState(()=>savedAtStart?.lang||'ar'); const t=COPY[lang];
   const [started,setStarted]=useState(false); const [tileState,setTileState]=useState(()=>savedAtStart?.tileState||makeTileState('ar')); const rack=tileState.rack; const bag=tileState.bag;
   const [board,setBoard]=useState(()=>savedAtStart?.board||{}); const [pending,setPending]=useState(()=>savedAtStart?.pending||[]); const [selected,setSelected]=useState(null); const [score,setScore]=useState(()=>Number(savedAtStart?.score)||0); const [roundLog,setRoundLog]=useState(()=>Array.isArray(savedAtStart?.roundLog)?savedAtStart.roundLog:[]); const [message,setMessage]=useState('');
@@ -32,7 +33,7 @@ export default function App(){
   function reset(){setBlankChoice('');setBoard({});setPending([]);setTileState(makeTileState(lang));setSelected(null);setScore(0);setRoundLog([]);setMessage('');}
   const [section,setSection]=useState('home');
   const navItems=[{id:'home',icon:'⌂',ar:'الصفحة الرئيسية',en:'Home'},{id:'profile',icon:'▤',ar:'الملف الشخصي',en:'Profile'},{id:'settings',icon:'⚙',ar:'إعدادات',en:'Settings'},{id:'friends',icon:'♧',ar:'أصدقاء',en:'Friends'},{id:'tournaments',icon:'🏆',ar:'البطولات',en:'Tournaments'},{id:'account',icon:'●',ar:'الحساب',en:'Account'},{id:'rooms',icon:'▦',ar:'الغرف',en:'Rooms'},{id:'online',icon:'◎',ar:'اللاعبون أونلاين',en:'Online players'}];
-  if(localMode)return <LocalTable language={lang} onExit={()=>setLocalMode(false)}/>;
+  if(localMode)return <LocalTable language={lang} botMode={botMode} onExit={()=>{setLocalMode(false);setBotMode(false);}}/>;
   return <main className={dark?'app dark':'app'} dir={lang==='ar'?'rtl':'ltr'}>
     <header className="topbar"><div className="brand"><div className="brand-mark">S</div><div><h1>Scrabble</h1><p>{t.tag}</p></div></div><div className="toolbar"><button className={lang==='ar'?'active':''} onClick={()=>changeLang('ar')}>العربية</button><button className={lang==='en'?'active':''} onClick={()=>changeLang('en')}>English</button><button className="theme" onClick={()=>setDark(v=>!v)} aria-label="theme">◐</button></div></header>
     {!started?<><section className="home-hub">
@@ -41,7 +42,7 @@ export default function App(){
         <button className="play-option" onClick={()=>setMessage(lang==='ar'?'اللعب أونلاين غير متاح حاليًا؛ يحتاج إلى ربط خادم اللاعبين.':'Online play is not available yet; it needs a player server.')}><span>◎</span><b>{lang==='ar'?'اللعب أونلاين':'Play online'}</b><small>{lang==='ar'?'الدخول إلى مباراة مع لاعبين متصلين':'Join a match with online players'}</small></button>
         <button className="play-option" onClick={()=>setMessage(lang==='ar'?'إنشاء الغرفة غير متاح حاليًا؛ نظام الغرف والاتصال لم يكتمل بعد.':'Room creation is not available yet; room networking is not implemented.')}><span>▣</span><b>{lang==='ar'?'إنشاء غرفة':'Create room'}</b><small>{lang==='ar'?'غرفة خاصة أو عامة للأصدقاء':'A private or public room for friends'}</small></button>
         <button className="play-option" onClick={()=>setMessage(lang==='ar'?'اللعب مع الأصدقاء عبر الإنترنت قيد التطوير.':'Playing with friends online is still in development.')}><span>♧</span><b>{lang==='ar'?'اللعب ضد الأصدقاء':'Play with friends'}</b><small>{lang==='ar'?'ادعُ أصدقاءك إلى مباراة':'Invite friends to a match'}</small></button>
-        <button className="play-option" disabled><span>♟</span><b>{lang==='ar'?'اللعب ضد البوت':'Play vs bot'}</b><small>{lang==='ar'?'الذكاء الاصطناعي قيد البرمجة':'AI opponent is in development'}</small></button>
+        <button className="play-option" onClick={()=>{setBotMode(true);setLocalMode(true);}}><span>♟</span><b>{lang==='ar'?'اللعب ضد البوت':'Play vs bot'}</b><small>{lang==='ar'?'اختر مستوى الكمبيوتر من 1 إلى 5':'Choose computer level 1–5'}</small></button>
         <button className="play-option" onClick={()=>setLocalMode(true)}><span>▦</span><b>{lang==='ar'?'اللعب الجماعي على جهاز واحد':'Local multiplayer'}</b><small>{lang==='ar'?'العبوا معًا على نفس الجوال أو الجهاز':'Play together on the same device'}</small></button>
       </div>
       {savedAtStart?.started&&<button className="resume-game" onClick={()=>setStarted(true)}>{lang==='ar'?'استكمال الجولة المحفوظة':'Resume saved game'}</button>}
