@@ -75,3 +75,11 @@ test('blank tile remains zero points even on a triple-letter square',()=>{
   assert.equal(move.valid,true);
   assert.equal(move.total,1);
 });
+
+test('one new tile scores every cross-word it creates',()=>{
+  const board={97:tile('A',1),127:tile('T',1),111:tile('I',1)};
+  const move=evaluateMove(board,[{row:7,col:7,tile:tile('C',3)}]);
+  assert.equal(move.valid,true);
+  assert.equal(move.words.length,2);
+  assert.equal(move.total,18);
+});
