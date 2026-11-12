@@ -10,6 +10,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const [count,setCount]=useState(2);
   const [difficulty,setDifficulty]=useState(3);
   const [premiumLayout,setPremiumLayout]=useState(()=>[...PREMIUM]);
+  const [chestOpen,setChestOpen]=useState(true);
   const [editingPremium,setEditingPremium]=useState(false);
   const [premiumTool,setPremiumTool]=useState('TW');
   const [session,setSession]=useState(()=>loadLocalSession(language));
@@ -103,6 +104,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   return <main className="local-table" dir={ar?'rtl':'ltr'}>
     <header className="local-header"><div><small>{botMode?(ar?'مباراة ضد البوت':'VS BOT'):(ar?'مباراة محلية':'LOCAL MATCH')}</small><h2>{session.status==='finished'?(ar?'انتهت المباراة':'Match finished'):(ar?'دور':'Turn')+' — '+player.name}</h2></div><button onClick={onExit}>{ar?'خروج':'Exit'}</button></header>
     <div className="local-scores">{session.players.map((p,i)=><div className={i===session.currentPlayer?'current':''} key={p.id}><span>{p.name}</span><b>{p.score}</b><small>{ar?'قطع':'Tiles'}: {p.rack.length}</small></div>)}</div>
+    <section className="chest-panel"><div className="chest-heading"><h3>{ar?'صندوق الحروف الخشبي':'Wooden letter chest'}</h3><strong>{session.bag.length} {ar?'قطعة متبقية':'tiles left'}</strong></div><button type="button" className={'chest-lid '+(chestOpen?'open':'closed')} aria-expanded={chestOpen} onClick={()=>setChestOpen(value=>!value)}>{chestOpen?(ar?'✦ الصندوق مفتوح · اضغط لإغلاق الغطاء':'✦ Chest open · tap to close lid'):(ar?'✦ اضغط لفتح صندوق الحروف':'✦ Tap to open the letter chest')}</button>{chestOpen&&<div className="chest-row">{session.bag.map((_,i)=><span key={i} className="chest-tile face-down" aria-hidden="true"><b>✦</b><small>SCRABBLE</small></span>)}</div>}<p>{ar?'القطع مقلوبة، وتتجدد تلقائيًا بعد اعتماد الحركة.':'Tiles stay face down and refill automatically after a move is accepted.'}</p></section>
     {session.status==='finished'&&<><h2 className="winner">{ar?'الفائز: ':'Winner: '}{session.players.find(p=>p.id===session.winner)?.name}</h2><button className="primary" onClick={()=>setSession(null)}>{ar?'ابدأ مباراة جديدة':'Start a new match'}</button></>}
     <div className="local-board-area"><div className="board">{cells.map(i=>{const tile=visibleBoard[i];const p=(session.premiumLayout||PREMIUM)[i]||'';return <button key={i} className={'cell '+(tile?'filled':p.toLowerCase())} disabled={busy||session.status==='finished'} onClick={()=>place(i)}>{tile?<><b>{tile.blankAs||tile.letter}</b><small>{tile.points}</small></>:p==='TW'?(ar?'ك×3':'3W'):p==='DW'?(ar?'ك×2':'2W'):p==='TL'?(ar?'ح×3':'3L'):p==='DL'?(ar?'ح×2':'2L'):i===112?'★':''}</button>;})}</div></div>
     {session.status==='playing'&&<section className="local-controls">
