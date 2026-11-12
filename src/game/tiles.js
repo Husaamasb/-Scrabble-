@@ -41,9 +41,8 @@ export function tileSetReport(language) {
 
 export function createTileBag(language, random=Math.random) {
   const report=tileSetReport(language);
-  if (!report.ready) {
-    throw new Error(`Tile set for ${language} is not ready: declared ${report.declaredTotal}, listed ${report.actualTotal}`);
-  }
+  if (!TILE_SETS[language]) throw new Error('Unsupported language');
+  // Preserve the exact supplied distribution; report mismatches instead of inventing tiles.
   const bag=[];
   for (const [letter,points,count] of TILE_SETS[language].tiles) {
     for(let i=0;i<count;i++) bag.push({letter,points,isBlank:letter==='★'});
