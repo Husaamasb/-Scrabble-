@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { PREMIUM, evaluateMove } from './game/engine.js';
 import { createGameSession, commitTurn, exchangeFromRack, passTurn } from './game/session.js';
 import { createWiktionaryValidator } from './game/wordValidator.js';
+import { orderBotMoves } from './game/bot.js';
 
 const names = ['اللاعب الأول','اللاعب الثاني','اللاعب الثالث','اللاعب الرابع'];
 function loadLocalSession(language){try{const saved=JSON.parse(globalThis.localStorage?.getItem('scrabble:local-session:'+language)||'null');return saved?.version===1&&saved.session?.players?.length>=2?saved.session:null;}catch{return null;}}
@@ -47,9 +48,8 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     const runBot=async()=>{
       setBusy(true);setMessage(ar?'البوت يفكر في حركته…':'The bot is thinking…');
       try{
-        const moves=findBotMoves(session);
-        const count=Math.min(moves.length,Math.max(1,difficulty*3));
-        for(const move of moves.slice(0,count)){
+        const moves=orderBotMoves(findBotMoves(session),difficulty);
+        for(const move of moves){
           if(cancelled)return;
           const result=await commitTurn(session,move.placements,createWiktionaryValidator());
           if(result.ok){if(!cancelled){setSession(result.session);setMessage(ar?'لعب البوت '+move.word+' وحصل على '+result.move.total+' نقطة.':'Bot played '+move.word+' for '+result.move.total+' points.');}return;}
