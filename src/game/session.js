@@ -24,17 +24,38 @@ export function chooseStartingPlayer(drawnLetters,language){
 const makeId=(random)=>`tile-${Math.floor(random()*1e12).toString(36)}-${Math.random().toString(36).slice(2,7)}`;
 const addIds=(tiles,random)=>tiles.map(tile=>({...tile,id:makeId(random)}));
 
+function shuffleInPlace(items,random){
+  for(let i=items.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}
+}
+function drawStartingOrder(bag,playerCount,language,random){
+  let eligible=Array.from({length:playerCount},(_,i)=>i);
+  const history=[];
+  for(let round=0;round<100;round++){
+    if(bag.length<eligible.length)throw new Error('Not enough tiles for starting draw');
+    const drawn=eligible.map(()=>bag.shift());
+    const decision=chooseStartingPlayer(drawn.map(tile=>tile.letter),language);
+    history.push({players:[...eligible],letters:drawn.map(tile=>tile.letter)});
+    bag.push(...drawn);
+    shuffleInPlace(bag,random);
+    if(!decision.tie)return {playerIndex:eligible[decision.playerIndex],history};
+    eligible=decision.playerIndices.map(index=>eligible[index]);
+  }
+  return {playerIndex:eligible[0],history,tieBreakLimitReached:true};
+}
+
 export function createGameSession(language, playerNames, random=Math.random) {
   if (!Array.isArray(playerNames)||playerNames.length<2||playerNames.length>4) {
     throw new Error('A Scrabble session needs 2 to 4 players');
   }
   const bag=createTileBag(language,random);
+  const starter=drawStartingOrder(bag,playerNames.length,language,random);
   const players=playerNames.map((name,index)=>{
     const draw=drawTiles(bag,7);
     bag.splice(0,draw.drawn.length);
     return {id:`player-${index+1}`,name,score:0,rack:addIds(draw.drawn,random)};
   });
-  return {language,players,board:{},bag,currentPlayer:0,consecutivePasses:0,status:'playing',winner:null,history:[]};
+  return {language,players,board:{},bag,currentPlayer:starter.playerIndex,startingDraws:starter.history,
+    consecutivePasses:0,status:'playing',winner:null,history:[]};
 }
 
 export async function commitTurn(session, placements, dictionaryValidator) {
