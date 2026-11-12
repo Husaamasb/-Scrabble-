@@ -48,7 +48,7 @@ export default function App(){
         <button className="play-option" onClick={()=>{setBotMode(true);setLocalMode(true);}}><span>♟</span><b>{lang==='ar'?'اللعب ضد البوت':'Play vs bot'}</b><small>{lang==='ar'?'اختر مستوى الكمبيوتر من 1 إلى 5':'Choose computer level 1–5'}</small></button>
         <button className="play-option" onClick={()=>setLocalMode(true)}><span>▦</span><b>{lang==='ar'?'اللعب الجماعي على جهاز واحد':'Local multiplayer'}</b><small>{lang==='ar'?'العبوا معًا على نفس الجوال أو الجهاز':'Play together on the same device'}</small></button>
         <button className="play-option" onClick={()=>{setSection('tasks');setMessage('');}}><span>🎯</span><b>{lang==='ar'?'المهام':'Tasks'}</b><small>{lang==='ar'?'التحديات والإنجازات اليومية':'Daily challenges and achievements'}</small></button>
-        <button className="play-option" onClick={()=>{setSection('store');setMessage('');}}><span>🛒</span><b>{lang==='ar'?'المتجر':'Store'}</b><small>{lang==='ar'?'إطارات وتصاميم وقطع وألقاب':'Frames, tile designs and titles'}</small></button>
+        <button className="play-option" onClick={()=>{setSection('store');setMessage('');}} ><span>🛍️</span><b>{lang==='ar'?'المتجر':'Store'}</b><small>{lang==='ar'?'إطارات وتصاميم وقطع وألقاب':'Frames, tile designs and titles'}</small></button>
       </div>
       {savedAtStart?.started&&<button className="resume-game" onClick={()=>setStarted(true)}>{lang==='ar'?'استكمال الجولة المحفوظة':'Resume saved game'}</button>}
       {message&&<div className="message">{message}</div>}
