@@ -72,3 +72,10 @@ test('first player is selected by the tile closest to alif/A, ties require redra
   assert.deepEqual(chooseStartingPlayer(['ب','ا','ت'],'ar'),{tie:false,playerIndex:1});
   assert.deepEqual(chooseStartingPlayer(['A','A'],'en'),{tie:true,playerIndices:[0,1]});
 });
+
+
+test('session tile IDs use the injected random source deterministically',()=>{
+  const first=createGameSession('en',['One','Two'],()=>0.25);
+  const second=createGameSession('en',['One','Two'],()=>0.25);
+  assert.deepEqual(first.players.map(p=>p.rack.map(tile=>tile.id)),second.players.map(p=>p.rack.map(tile=>tile.id)));
+});
