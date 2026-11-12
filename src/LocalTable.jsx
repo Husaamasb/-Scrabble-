@@ -1,12 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PREMIUM, evaluateMove } from './game/engine.js';
 import { createGameSession, commitTurn, exchangeFromRack, passTurn } from './game/session.js';
 import { createWiktionaryValidator } from './game/wordValidator.js';
 
 const names = ['اللاعب الأول','اللاعب الثاني','اللاعب الثالث','اللاعب الرابع'];
+function loadLocalSession(language){try{const saved=JSON.parse(globalThis.localStorage?.getItem('scrabble:local-session:'+language)||'null');return saved?.version===1&&saved.session?.players?.length>=2?saved.session:null;}catch{return null;}}
 export default function LocalTable({ language, onExit }) {
   const [count,setCount]=useState(2);
-  const [session,setSession]=useState(null);
+  const [session,setSession]=useState(()=>loadLocalSession(language));
   const [pending,setPending]=useState([]);
   const [selected,setSelected]=useState(null);
   const [blankChoice,setBlankChoice]=useState('');
@@ -15,6 +16,7 @@ export default function LocalTable({ language, onExit }) {
   const [message,setMessage]=useState('');
   const [mode,setMode]=useState('local');
   const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
+  useEffect(()=>{try{if(session)globalThis.localStorage?.setItem('scrabble:local-session:'+language,JSON.stringify({version:1,session}));else globalThis.localStorage?.removeItem('scrabble:local-session:'+language);}catch{}},[session,language]);
   const ar=language==='ar';
   const start=()=>{setSession(createGameSession(language,names.slice(0,count)));setPending([]);setSelected(null);setExchange([]);setMessage('');};
   if(!session)return <section className="local-setup" dir={ar?'rtl':'ltr'}>
@@ -54,7 +56,7 @@ export default function LocalTable({ language, onExit }) {
   return <main className="local-table" dir={ar?'rtl':'ltr'}>
     <header className="local-header"><div><small>{ar?'مباراة محلية':'LOCAL MATCH'}</small><h2>{session.status==='finished'?(ar?'انتهت المباراة':'Match finished'):(ar?'دور':'Turn')+' — '+player.name}</h2></div><button onClick={onExit}>{ar?'خروج':'Exit'}</button></header>
     <div className="local-scores">{session.players.map((p,i)=><div className={i===session.currentPlayer?'current':''} key={p.id}><span>{p.name}</span><b>{p.score}</b><small>{ar?'قطع':'Tiles'}: {p.rack.length}</small></div>)}</div>
-    {session.status==='finished'&&<h2 className="winner">{ar?'الفائز: ':'Winner: '}{session.players.find(p=>p.id===session.winner)?.name}</h2>}
+    {session.status==='finished'&&<><h2 className="winner">{ar?'الفائز: ':'Winner: '}{session.players.find(p=>p.id===session.winner)?.name}</h2><button className="primary" onClick={()=>setSession(null)}>{ar?'ابدأ مباراة جديدة':'Start a new match'}</button></>}
     <div className="local-board-area"><div className="board">{cells.map(i=>{const tile=visibleBoard[i];const p=PREMIUM[i]||'';return <button key={i} className={'cell '+(tile?'filled':p.toLowerCase())} disabled={busy||session.status==='finished'} onClick={()=>place(i)}>{tile?<><b>{tile.blankAs||tile.letter}</b><small>{tile.points}</small></>:p==='TW'?'3W':p==='DW'?'2W':p==='TL'?'3L':p==='DL'?'2L':i===112?'★':''}</button>;})}</div></div>
     {session.status==='playing'&&<section className="local-controls">
       <h3>{ar?'قطع ':'Rack — '}{player.name}</h3>
