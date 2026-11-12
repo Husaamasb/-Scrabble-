@@ -63,7 +63,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   if(!session)return <section className="local-setup" dir={ar?'rtl':'ltr'}>
     <h2>{ar?'لعب جماعي على نفس الجهاز':'Same-device multiplayer'}</h2>
     <p>{ar?'اختاروا عدد اللاعبين، ومرروا الجهاز بعد نهاية كل دور.':'Choose the player count and pass the device after each turn.'}</p>
-    <label>{botMode?(ar?'مستوى البوت':'Bot level'):(ar?'عدد اللاعبين':'Players')} <select value={botMode?difficulty:count} onChange={e=>botMode?setDifficulty(Number(e.target.value)):setCount(Number(e.target.value))}>{(botMode?[1,2,3,4,5]:[2,3,4]).map(n=><option key={n} value={n}>{n}</option>)}</select></label>
+    <label>{botMode?(ar?'مستوى البوت':'Bot level'):(ar?'عدد اللاعبين':'Players')} <select value={botMode?difficulty:count} onChange={e=>botMode?setDifficulty(Number(e.target.value)):setCount(Number(e.target.value))}>{(botMode?[{value:1,ar:'سهل جدًا',en:'Very easy'},{value:2,ar:'سهل',en:'Easy'},{value:3,ar:'متوسط',en:'Medium'},{value:4,ar:'صعب',en:'Hard'},{value:5,ar:'صعب جدًا',en:'Very hard'}]:[2,3,4].map(n=>({value:n,ar:String(n),en:String(n)}))).map(option=><option key={option.value} value={option.value}>{ar?option.ar:option.en}</option>)}</select></label>
     <button className="primary" onClick={start}>{ar?'ابدأ المباراة':'Start match'}</button>
     <button onClick={onExit}>{ar?'رجوع':'Back'}</button>
   </section>;
