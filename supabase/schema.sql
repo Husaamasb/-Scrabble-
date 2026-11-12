@@ -76,7 +76,6 @@ create table if not exists public.rooms (
   language text not null default 'ar' check(language in ('ar','en')),
   status text not null default 'waiting' check(status in ('waiting','playing','finished')),
   game_state jsonb not null default '{}'::jsonb,
-  premium_layout jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -264,16 +263,7 @@ grant execute on function public.set_scrabble_ready(uuid,boolean) to authenticat
 grant execute on function public.start_scrabble_room(uuid) to authenticated;
 
 
--- Host-managed 15x15 premium-square layout for waiting rooms.
-create or replace function public.save_scrabble_room_layout(target_room uuid, layout jsonb)
-returns void language plpgsql security definer set search_path = public
-as $$
-begin
-  if auth.uid() is null then raise exception 'Sign in required'; end if;
-  if not exists(select 1 from public.rooms where id=target_room and host_id=auth.uid() and status='waiting') then raise exception 'Only the host can edit a waiting room'; end if;
-  if jsonb_typeof(layout) <> 'array' or jsonb_array_length(layout) <> 225 then raise exception 'Layout must contain exactly 225 squares'; end if;
-  if exists(select 1 from jsonb_array_elements_text(layout) as items(value) where value not in ('N','TW','DW','TL','DL','START')) then raise exception 'Invalid premium square'; end if;
-  update public.rooms set premium_layout=layout, updated_at=now() where id=target_room;
-end;
-$$;
-grant execute on function public.save_scrabble_room_layout(uuid,jsonb) to authenticated;
+-- Premium squares use the fixed standard Scrabble board layout.
+-- Remove the former room-specific editor and any saved custom layouts.
+drop function if exists public.save_scrabble_room_layout(uuid, jsonb);
+alter table public.rooms drop column if exists premium_layout;
