@@ -21,8 +21,8 @@ export function chooseStartingPlayer(drawnLetters,language){
   return winners.length===1?{tie:false,playerIndex:winners[0]}:{tie:true,playerIndices:winners};
 }
 
-const makeId=(random)=>`tile-${Math.floor(random()*1e12).toString(36)}-${Math.floor(random()*1e9).toString(36)}`;
-const addIds=(tiles,random)=>tiles.map(tile=>({...tile,id:makeId(random)}));
+const makeId=(random,serial)=>`tile-${Math.floor(random()*1e12).toString(36)}-${serial.toString(36)}`;
+const addIds=(tiles,random,startSerial=0)=>tiles.map((tile,index)=>({...tile,id:makeId(random,startSerial+index)}));
 
 function shuffleInPlace(items,random){
   for(let i=items.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}
@@ -49,12 +49,15 @@ export function createGameSession(language, playerNames, random=Math.random) {
   }
   const bag=createTileBag(language,random);
   const starter=drawStartingOrder(bag,playerNames.length,language,random);
+  let tileSerial=0;
   const players=playerNames.map((name,index)=>{
     const draw=drawTiles(bag,7);
     bag.splice(0,draw.drawn.length);
-    return {id:`player-${index+1}`,name,score:0,rack:addIds(draw.drawn,random)};
+    const rack=addIds(draw.drawn,random,tileSerial);
+    tileSerial+=draw.drawn.length;
+    return {id:`player-${index+1}`,name,score:0,rack};
   });
-  return {language,players,board:{},bag,currentPlayer:starter.playerIndex,startingDraws:starter.history,
+  return {language,players,board:{},bag,currentPlayer:starter.playerIndex,tileSerial,startingDraws:starter.history,
     consecutivePasses:0,status:'playing',winner:null,history:[]};
 }
 
@@ -72,10 +75,10 @@ export async function commitTurn(session, placements, dictionaryValidator, rando
   const used=new Set(placements.map(p=>p.tile.id));
   const remainingRack=player.rack.filter(tile=>!used.has(tile.id));
   const draw=drawTiles(session.bag,7-remainingRack.length);
-  const nextRack=[...remainingRack,...addIds(draw.drawn,random)];
+  const nextRack=[...remainingRack,...addIds(draw.drawn,random,session.tileSerial||0)];
   const nextPlayers=session.players.map((p,index)=>index===session.currentPlayer
     ? {...p,score:p.score+applied.total,rack:nextRack} : p);
-  const next={...session,players:nextPlayers,board:applied.board,bag:draw.remaining,consecutivePasses:0,
+  const next={...session,tileSerial:(session.tileSerial||0)+draw.drawn.length,players:nextPlayers,board:applied.board,bag:draw.remaining,consecutivePasses:0,
     history:[...session.history,{playerId:player.id,words:applied.words,points:applied.total}]};
   if(nextRack.length===0&&next.bag.length===0){
     const finalScores=settleEndgame(next.players.map(p=>p.score),next.players.map(p=>p.rack),session.currentPlayer);
@@ -97,10 +100,10 @@ export function exchangeFromRack(session, tileIds, random=Math.random) {
   const exchange=exchangeTiles(session.bag,selected,random);
   if(!exchange.valid) return {ok:false,reason:exchange.reason};
   const selectedIds=new Set(tileIds);
-  const replacement=addIds(exchange.replacements,random);
+  const replacement=addIds(exchange.replacements,random,session.tileSerial||0);
   const nextPlayers=session.players.map((p,index)=>index===session.currentPlayer
     ? {...p,rack:[...p.rack.filter(tile=>!selectedIds.has(tile.id)),...replacement]} : p);
-  return {ok:true,session:{...session,players:nextPlayers,bag:exchange.remaining,
+  return {ok:true,session:{...session,tileSerial:(session.tileSerial||0)+replacement.length,players:nextPlayers,bag:exchange.remaining,
     currentPlayer:(session.currentPlayer+1)%session.players.length,consecutivePasses:0}};
 }
 
