@@ -22,7 +22,7 @@ export function findBotMoves(session, vocabulary=BOT_WORDS[session.language]||[]
     let ti=remaining.findIndex(t=>t.letter===word[i]);if(ti<0)ti=remaining.findIndex(t=>t.isBlank);if(ti<0){valid=false;break;}
     const tile=remaining.splice(ti,1)[0];placements.push({row:rr,col:cc,tile:tile.isBlank?{...tile,blankAs:word[i]}:tile});
    }
-   if(!valid||!placements.length)continue;const result=evaluateMove(session.board,placements);if(result.valid)moves.push({placements,points:result.total,word});
+   if(!valid||!placements.length)continue;const result=evaluateMove(session.board,placements,session.premiumLayout);if(result.valid)moves.push({placements,points:result.total,word});
   }
  }
  const unique=new Map();for(const move of moves){const key=move.placements.map(p=>p.row*15+p.col).sort((a,b)=>a-b).join(',');if(!unique.has(key))unique.set(key,move);}
