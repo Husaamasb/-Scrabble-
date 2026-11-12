@@ -32,6 +32,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest and service-worker shell cache.
+- Supabase integration foundation: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
 
 ## Not yet a complete release
@@ -40,7 +41,8 @@ The app includes a separate playable local match screen for same-device multipla
 
 - Online matchmaking, networked rooms and host synchronization (the current room UI is a local prototype; custom board layouts are not yet synced between online players), invites, tournaments, and daily challenges.
 - Final hinged wooden chest animation and the original user-provided logo asset.
-- Account creation, email verification, password reset, profiles, friends, chat, privacy controls, and cloud synchronization.
+- Cloud backend activation requires a Supabase project, running `supabase/schema.sql`, and setting the two public Vite variables described in `SUPABASE_SETUP.md`.
+- Full synchronized Scrabble gameplay inside network rooms, reconnect handling, tournaments, push notifications, and cloud match history are not complete.
 - Rankings, XP, coins, badges, store, rewards, notifications, and statistics.
 - Native Android/iOS packaging and device testing.
 - Full end-to-end testing, including Arabic dictionary coverage and real-device offline behavior.
