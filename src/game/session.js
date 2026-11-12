@@ -63,9 +63,12 @@ export function createGameSession(language, playerNames, random=Math.random) {
 
 export async function commitTurn(session, placements, dictionaryValidator, random=Math.random) {
   if(session.status!=='playing') return {ok:false,reason:'game-finished'};
+  if(!Array.isArray(placements)||placements.length===0) return {ok:false,reason:'empty-move'};
   const player=session.players[session.currentPlayer];
   const rackIds=new Set(player.rack.map(tile=>tile.id));
-  if(placements.some(p=>!rackIds.has(p.tile?.id))) return {ok:false,reason:'tile-not-in-current-rack'};
+  const placedIds=placements.map(p=>p.tile?.id);
+  if(placedIds.some(id=>!rackIds.has(id))) return {ok:false,reason:'tile-not-in-current-rack'};
+  if(new Set(placedIds).size!==placedIds.length) return {ok:false,reason:'duplicate-tile'};
   const evaluation=evaluateMove(session.board,placements);
   if(!evaluation.valid) return {ok:false,reason:evaluation.reason};
   const dictionary=await validateWords(evaluation.words,session.language,dictionaryValidator);
