@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { orderBotMoves } from '../src/game/bot.js';
+import { findBotMoves, orderBotMoves } from '../src/game/bot.js';
 
 const moves=Array.from({length:20},(_,i)=>({points:200-i}));
 
@@ -26,4 +26,12 @@ test('easiest level can choose from the full candidate set',()=>{
 
 test('invalid levels are safely clamped',()=>{
   assert.deepEqual(orderBotMoves(moves,99,()=>0),orderBotMoves(moves,5,()=>0));
+});
+
+test('bot can extend an existing word longer than seven letters',()=>{
+  const board={};
+  for(const [index,letter] of [...'scrabbl'].entries()) board[105+index]={letter,points:1};
+  const session={language:'en',board,currentPlayer:0,players:[{rack:[{id:'e',letter:'e',points:1},{id:'s',letter:'s',points:1}]}]};
+  const moves=findBotMoves(session,['scrabbles']);
+  assert.ok(moves.some(move=>move.word==='scrabbles'&&move.placements.length===2));
 });
