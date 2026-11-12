@@ -16,14 +16,21 @@ create unique index if not exists profiles_username_lower_idx on public.profiles
 
 create or replace function public.create_profile_for_new_user()
 returns trigger language plpgsql security definer set search_path = public
-as $$
+as $func$
+declare desired_name text; candidate_name text;
 begin
+  desired_name := left(coalesce(nullif(trim(new.raw_user_meta_data->>'username'),''),split_part(new.email,'@',1)),20);
+  if char_length(desired_name)<2 then desired_name := 'Player'; end if;
+  candidate_name := desired_name;
+  while exists(select 1 from public.profiles where lower(username)=lower(candidate_name)) loop
+    candidate_name := left(desired_name,14) || substr(replace(gen_random_uuid()::text,'-',''),1,5);
+  end loop;
   insert into public.profiles (id, username)
-  values (new.id, coalesce(nullif(new.raw_user_meta_data->>'username',''), split_part(new.email,'@',1)))
+  values (new.id, candidate_name)
   on conflict (id) do nothing;
   return new;
 end;
-$$;
+$func$;
 drop trigger if exists on_auth_user_created_scrabble on auth.users;
 create trigger on_auth_user_created_scrabble after insert on auth.users
 for each row execute procedure public.create_profile_for_new_user();
