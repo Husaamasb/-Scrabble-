@@ -31,13 +31,13 @@ function collectWord(board, placements, row, col, dr, dc) {
   return cells;
 }
 
-function scoreWord(cells, placements) {
+function scoreWord(cells, placements, premiumLayout = PREMIUM) {
   let subtotal = 0, wordMultiplier = 1;
   for (const cell of cells) {
     const tile = cell.tile;
     let points = tile.isBlank ? 0 : (Number(tile.points) || 0);
     if (placements.has(key(cell.row,cell.col))) {
-      const premium = PREMIUM[key(cell.row,cell.col)];
+      const premium = premiumLayout[key(cell.row,cell.col)];
       if (premium === 'DL') points *= 2;
       if (premium === 'TL') points *= 3;
       if (premium === 'DW') wordMultiplier *= 2;
@@ -48,7 +48,7 @@ function scoreWord(cells, placements) {
   return subtotal * wordMultiplier;
 }
 
-export function evaluateMove(board, proposed) {
+export function evaluateMove(board, proposed, premiumLayout = PREMIUM) {
   if (!Array.isArray(proposed) || proposed.length === 0) return { valid:false, reason:'empty-move' };
   const placements = new Map();
   for (const p of proposed) {
@@ -97,14 +97,14 @@ export function evaluateMove(board, proposed) {
   const scoredWords=[...words.values()].map(cells=>({
     letters:cells.map(x=>x.tile.blankAs ?? x.tile.letter).join(''),
     cells:cells.map(x=>key(x.row,x.col)),
-    points:scoreWord(cells,placements)
+    points:scoreWord(cells,placements,premiumLayout)
   }));
   const bingo=proposed.length===7?50:0;
   return { valid:true, words:scoredWords, wordPoints:scoredWords.reduce((s,w)=>s+w.points,0), bingo, total:scoredWords.reduce((s,w)=>s+w.points,0)+bingo };
 }
 
-export function applyMove(board, proposed) {
-  const result=evaluateMove(board,proposed);
+export function applyMove(board, proposed, premiumLayout = PREMIUM) {
+  const result=evaluateMove(board,proposed,premiumLayout);
   if (!result.valid) return result;
   const next={...board};
   proposed.forEach(p=>{next[key(p.row,p.col)]={...p.tile};});
