@@ -28,6 +28,8 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
 - Playable same-device multiplayer mode for 2–4 players, with starting-player draw, private turn handoff, scoring, pass/exchange flow, match history, winner display, and automatic local match recovery.
+- Configurable per-turn countdown (30/60/90/120 seconds or no timer), including automatic pass on timeout for human and bot turns.
+- Interactive 15×15 premium-square editor for new local matches: triple/double word, triple/double letter, clearing squares, restoring the standard layout, and persisting the chosen layout in the match session. The bot and scoring engine use that selected layout.
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest and service-worker shell cache.
@@ -35,9 +37,9 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 
 ## Not yet a complete release
 
-The visible screen currently supports a local single-player practice flow; the full 2–4 player session engine is not yet integrated into the screen. The following work remains:
+The app includes a separate playable local match screen for same-device multiplayer and bot matches. Networked multiplayer and account-backed features are not complete. The following work remains:
 
-- Full multiplayer turn UI, computer opponents (five levels), same-device play, online matchmaking, rooms, invites, tournaments, and daily challenges.
+- Online matchmaking, networked rooms and host synchronization (the current room UI is a local prototype; custom board layouts are not yet synced between online players), invites, tournaments, and daily challenges.
 - Final hinged wooden chest animation and the original user-provided logo asset.
 - Account creation, email verification, password reset, profiles, friends, chat, privacy controls, and cloud synchronization.
 - Rankings, XP, coins, badges, store, rewards, notifications, and statistics.
