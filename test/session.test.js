@@ -40,7 +40,9 @@ test('exchange returns replacements and advances the turn',()=>{
   const result=exchangeFromRack(session,['c','a'],()=>0.5);
   assert.equal(result.ok,true);
   assert.equal(result.session.players[0].rack.length,7);
-  assert.equal(result.session.bag.length,20);\n  assert.ok(result.session.bag.some(tile=>tile.letter==='C'));\n  assert.ok(result.session.bag.some(tile=>tile.letter==='A'));
+  assert.equal(result.session.bag.length,20);
+  assert.ok(result.session.bag.some(tile=>tile.letter==='C'));
+  assert.ok(result.session.bag.some(tile=>tile.letter==='A'));
   assert.equal(result.session.currentPlayer,1);
 });
 
