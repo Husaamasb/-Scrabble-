@@ -5,9 +5,14 @@ import { validateWords } from '../src/game/wordValidator.js';
 
 const tile=(letter,points=1)=>({letter,points});
 
-test('board has 225 squares and the center is double word',()=>{
+test('board has 225 squares, centered start, and symmetric premium squares',()=>{
   assert.equal(PREMIUM.length,225);
   assert.equal(PREMIUM[112],'DW');
+  assert.equal(PREMIUM.filter(x=>x==='TW').length,8);
+  assert.equal(PREMIUM.filter(x=>x==='DW').length,17);
+  assert.equal(PREMIUM.filter(x=>x==='TL').length,12);
+  assert.equal(PREMIUM.filter(x=>x==='DL').length,24);
+  for(let r=0;r<15;r++)for(let c=0;c<15;c++)assert.equal(PREMIUM[r*15+c],PREMIUM[(14-r)*15+(14-c)]);
 });
 
 test('first move must cover center and make a word',()=>{
