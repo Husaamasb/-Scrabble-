@@ -138,6 +138,10 @@ begin
 end;
 $$;
 
+create or replace function public.is_scrabble_room_member(target_room uuid)
+returns boolean language sql stable security definer set search_path = public
+as $ select exists(select 1 from public.room_members where room_id=target_room and user_id=auth.uid()) $;
+
 alter table public.profiles enable row level security;
 alter table public.friend_requests enable row level security;
 alter table public.friendships enable row level security;
@@ -148,7 +152,7 @@ alter table public.direct_messages enable row level security;
 alter table public.room_invites enable row level security;
 
 drop policy if exists "profiles readable by signed in users" on public.profiles;
-create policy "profiles readable by signed in users" on public.profiles for select to authenticated using (true);
+create policy "profiles readable by privacy settings" on public.profiles for select to authenticated using (id=auth.uid() or privacy='everyone' or (privacy='friends' and exists(select 1 from public.friendships f where (f.user_low=auth.uid() and f.user_high=id) or (f.user_high=auth.uid() and f.user_low=id))));
 drop policy if exists "users update own profile" on public.profiles;
 create policy "users update own profile" on public.profiles for update to authenticated using(id=auth.uid()) with check(id=auth.uid());
 
@@ -163,19 +167,21 @@ drop policy if exists "friendships visible to participants" on public.friendship
 create policy "friendships visible to participants" on public.friendships for select to authenticated using(user_low=auth.uid() or user_high=auth.uid());
 
 drop policy if exists "rooms visible to members or public waiting rooms" on public.rooms;
-create policy "rooms visible to members or public waiting rooms" on public.rooms for select to authenticated using(is_public and status='waiting' or exists(select 1 from public.room_members m where m.room_id=id and m.user_id=auth.uid()));
+create policy "rooms visible to members or public waiting rooms" on public.rooms for select to authenticated using(is_public and status='waiting' or public.is_scrabble_room_member(id));
 drop policy if exists "host updates room" on public.rooms;
 create policy "host updates room" on public.rooms for update to authenticated using(host_id=auth.uid()) with check(host_id=auth.uid());
 
 drop policy if exists "members see room members" on public.room_members;
-create policy "members see room members" on public.room_members for select to authenticated using(exists(select 1 from public.room_members mine where mine.room_id=room_id and mine.user_id=auth.uid()));
+create policy "members see room members" on public.room_members for select to authenticated using(public.is_scrabble_room_member(room_id));
 drop policy if exists "join own room membership" on public.room_members;
 create policy "join own room membership" on public.room_members for insert to authenticated with check(user_id=auth.uid() and exists(select 1 from public.rooms r where r.id=room_id and r.status='waiting'));
 drop policy if exists "users update own membership" on public.room_members;
 create policy "users update own membership" on public.room_members for update to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+drop policy if exists "users leave own room" on public.room_members;
+create policy "users leave own room" on public.room_members for delete to authenticated using(user_id=auth.uid());
 
 drop policy if exists "room members read chat" on public.room_messages;
-create policy "room members read chat" on public.room_messages for select to authenticated using(exists(select 1 from public.room_members m where m.room_id=room_id and m.user_id=auth.uid()));
+create policy "room members read chat" on public.room_messages for select to authenticated using(public.is_scrabble_room_member(room_id));
 drop policy if exists "room members send chat" on public.room_messages;
 create policy "room members send chat" on public.room_messages for insert to authenticated with check(sender_id=auth.uid() and exists(select 1 from public.room_members m where m.room_id=room_id and m.user_id=auth.uid()));
 
@@ -191,6 +197,7 @@ create policy "send room invites" on public.room_invites for insert to authentic
 drop policy if exists "receiver updates room invite" on public.room_invites;
 create policy "receiver updates room invite" on public.room_invites for update to authenticated using(receiver_id=auth.uid() and status='pending') with check(receiver_id=auth.uid() and status in ('accepted','rejected'));
 
+grant execute on function public.is_scrabble_room_member(uuid) to authenticated;
 grant execute on function public.accept_friend_request(uuid) to authenticated;
 grant execute on function public.join_room_by_code(text) to authenticated;
 grant execute on function public.create_scrabble_room(text,boolean,int,text) to authenticated;
