@@ -1,0 +1,33 @@
+import React, { useMemo, useState } from 'react';
+
+const LETTERS = {
+  ar: [['ا',1],['ب',1],['ت',1],['ث',1],['ج',1],['ح',1],['خ',1],['د',1],['ذ',1],['ر',1],['ز',2],['س',1],['ش',2],['ص',2],['ض',3],['ط',2],['ظ',4],['ع',2],['غ',4],['ف',1],['ق',2],['ك',3],['ل',1],['م',1],['ن',1],['ه',1],['و',1],['ي',1],['ء',8],['★',0]],
+  en: [['A',1],['B',3],['C',3],['D',2],['E',1],['F',4],['G',2],['H',4],['I',1],['J',8],['K',5],['L',1],['M',3],['N',1],['O',1],['P',3],['Q',10],['R',1],['S',1],['T',1],['U',1],['V',4],['W',4],['X',8],['Y',4],['Z',10],['★',0]]
+};
+const COPY = {
+  ar:{tag:'لعبة الكلمات الكلاسيكية',start:'ابدأ اللعب',arabic:'العربية',english:'English',turn:'دور اللاعب',score:'النقاط',rack:'قطعك',bag:'القطع المتبقية',confirm:'تأكيد الكلمة',exchange:'تبديل القطع',pass:'تجاوز الدور',clear:'إزالة التحديد',hint:'اختر قطعة من صندوقك ثم اضغط مربعًا في اللوحة.',notice:'هذه نسخة تأسيسية؛ التحقق من القاموس وحفظ الحسابات والأونلاين ستضاف في مراحل التطوير التالية.'},
+  en:{tag:'The classic word game',start:'Start playing',arabic:'العربية',english:'English',turn:"Player's turn",score:'Score',rack:'Your tiles',bag:'Tiles left',confirm:'Confirm word',exchange:'Exchange tiles',pass:'Pass turn',clear:'Clear selection',hint:'Choose a tile from your rack, then tap a board square.',notice:'This is the foundation build. Dictionary validation, accounts, saving and online play are still to be implemented.'}
+};
+const premium = new Set([0,7,14,105,112,119,210,217,224]);
+const doubleWord = new Set([16,28,32,42,48,56,64,70,154,160,168,176,182,192,196,208]);
+const tripleLetter = new Set([20,24,76,80,84,88,136,140,144,148,200,204]);
+const doubleLetter = new Set([3,11,36,38,45,52,59,92,96,98,102,108,116,122,126,128,132,138,152,156,164,166,172,179,186,188,213,221]);
+function premiumAt(i){ if(i===112)return 'START'; if(premium.has(i))return 'TW'; if(doubleWord.has(i))return 'DW'; if(tripleLetter.has(i))return 'TL'; if(doubleLetter.has(i))return 'DL'; return ''; }
+function makeRack(lang){const pool=LETTERS[lang]; return Array.from({length:7},(_,i)=>{const x=pool[Math.floor(Math.random()*pool.length)];return {id:crypto.randomUUID?.()||String(Date.now()+i),letter:x[0],points:x[1]};});}
+export default function App(){
+  const [lang,setLang]=useState('ar'); const t=COPY[lang];
+  const [started,setStarted]=useState(false); const [rack,setRack]=useState(()=>makeRack('ar'));
+  const [board,setBoard]=useState({}); const [selected,setSelected]=useState(null); const [score,setScore]=useState(0); const [message,setMessage]=useState('');
+  const [dark,setDark]=useState(false);
+  const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
+  function changeLang(next){setLang(next);setRack(makeRack(next));setSelected(null);setBoard({});setScore(0);setMessage('');}
+  function place(i){if(selected===null||board[i])return;const tile=rack.find(x=>x.id===selected);if(!tile)return;setBoard(b=>({...b,[i]:tile}));setRack(r=>r.filter(x=>x.id!==selected));setSelected(null);setMessage('');}
+  function refill(){setRack(r=>{const next=[...r];while(next.length<7)next.push(...makeRack(lang).slice(0,1));return next.slice(0,7);});}
+  function confirm(){const placed=Object.values(board);if(!placed.length){setMessage(lang==='ar'?'ضع قطعة على اللوحة أولاً':'Place a tile on the board first');return;}setScore(s=>s+placed.reduce((a,x)=>a+x.points,0));setMessage(lang==='ar'?'تم تسجيل نقاط القطع الموضوعة في هذه النسخة التجريبية.':'Tile points recorded in this foundation build.');refill();}
+  function reset(){setBoard({});setRack(makeRack(lang));setSelected(null);setScore(0);setMessage('');}
+  return <main className={dark?'app dark':'app'} dir={lang==='ar'?'rtl':'ltr'}>
+    <header className="topbar"><div className="brand"><div className="brand-mark">S</div><div><h1>Scrabble</h1><p>{t.tag}</p></div></div><div className="toolbar"><button className={lang==='ar'?'active':''} onClick={()=>changeLang('ar')}>العربية</button><button className={lang==='en'?'active':''} onClick={()=>changeLang('en')}>English</button><button className="theme" onClick={()=>setDark(v=>!v)} aria-label="theme">◐</button></div></header>
+    {!started?<section className="welcome"><div className="wood-emblem">S</div><p className="eyebrow">SCRABBLE</p><h2>{lang==='ar'?'كوّن الكلمات واربح النقاط':'Build words. Score points.'}</h2><p>{lang==='ar'?'اختر لغتك وابدأ جولة جديدة':'Choose your language and start a new game'}</p><button className="primary" onClick={()=>setStarted(true)}>{t.start} <span>←</span></button><div className="language-note">{t.notice}</div></section>:<><section className="game-head"><div><span className="eyebrow">{t.turn}</span><h2>{lang==='ar'?'اللاعب 1':'Player 1'}</h2></div><div className="score-card"><span>{t.score}</span><strong>{score}</strong></div><div className="score-card"><span>{t.bag}</span><strong>100</strong></div></section><div className="game-layout"><section className="board-wrap"><div className="board">{cells.map(i=>{const tile=board[i];const p=premiumAt(i);return <button key={i} className={'cell '+(tile?'filled':p.toLowerCase())} onClick={()=>place(i)} title={p||''}>{tile?<><b>{tile.letter}</b><small>{tile.points}</small></>:p==='START'?'★':p==='TW'?(lang==='ar'?'ك×3':'3W'):p==='DW'?(lang==='ar'?'ك×2':'2W'):p==='TL'?(lang==='ar'?'ح×3':'3L'):p==='DL'?(lang==='ar'?'ح×2':'2L'):''}</button>})}</div></section><aside className="side-panel"><div className="wood-panel"><h3>{t.rack}</h3><p>{t.hint}</p><div className="rack">{rack.map(tile=><button key={tile.id} className={'tile '+(selected===tile.id?'chosen':'')} onClick={()=>setSelected(tile.id)}><b>{tile.letter}</b><small>{tile.points}</small></button>)}</div><div className="actions"><button className="primary" onClick={confirm}>{t.confirm}</button><button onClick={()=>setSelected(null)}>{t.clear}</button><button onClick={reset}>{lang==='ar'?'لعبة جديدة':'New game'}</button></div>{message&&<div className="message">{message}</div>}</div><div className="wood-panel info"><h3>{lang==='ar'?'صندوق الحروف':'Letter box'}</h3><div className="box-lid">✦</div><p>{lang==='ar'?'صندوق خشبي — القطع المتبقية':'Wooden tile box — remaining tiles'}</p><strong>100</strong></div></aside></div></>}
+    <footer>SCRABBLE · {lang==='ar'?'العربية والإنجليزية':'Arabic & English'}</footer>
+  </main>;
+}
