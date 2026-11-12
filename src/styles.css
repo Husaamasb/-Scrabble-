@@ -76,3 +76,29 @@
 
 
 .premium-editor{display:grid;gap:10px;padding:12px;border:1px solid #b99870;border-radius:12px;background:#f0e2ca;color:#493321}.premium-editor>button,.premium-tools button{border:1px solid #9d7a54;border-radius:8px;padding:8px 10px;background:#ead8b8;color:#493321;font-weight:700}.premium-editor p{font-size:12px;margin:0}.premium-tools{display:grid;grid-template-columns:1fr 1fr;gap:6px}.premium-tools button.active{outline:2px solid #69472b;background:#d7bc91}.premium-editor-grid{display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:2px;padding:3px;background:#68472d;border:3px solid #674328;border-radius:7px}.premium-edit-cell{min-width:0;aspect-ratio:1;padding:0;border:1px solid #c5a77e;border-radius:2px;background:#e9d6b5;color:#493321;font-size:clamp(5px,1.5vw,10px);font-weight:900}.premium-edit-cell.tw{background:#c67a68;color:white}.premium-edit-cell.dw{background:#e7a2a0;color:#63362e}.premium-edit-cell.tl{background:#6e9b9a;color:white}.premium-edit-cell.dl{background:#9fc5bd;color:#284f4a}.dark .premium-editor{background:#30251d;color:#f2dfbd;border-color:#72553a}.dark .premium-editor>button,.dark .premium-tools button{background:#49372a;color:#f2dfbd;border-color:#72553a}
+
+
+/* Supabase cloud account, friends, rooms and realtime chat */
+.cloud-panel{max-width:900px;margin:24px auto;padding:22px;border:1px solid #b18a60;border-radius:18px;background:linear-gradient(145deg,#fff7e8,#ead6b7);color:#38251b;box-shadow:0 12px 32px #3b251b22}
+.app.dark .cloud-panel,.app.dark .dashboard-panel{background:#30241d;color:#f6e8d1;border-color:#72543a}
+.cloud-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cloud-head h2{margin:4px 0 14px}.cloud-indicator{font-size:11px;font-weight:800;padding:6px 10px;border-radius:20px;background:#d9ead7;color:#23522a}
+.cloud-content,.cloud-form{display:grid;gap:13px;margin-top:16px}
+.cloud-content label,.cloud-form label{display:grid;gap:6px;font-weight:700}
+.cloud-content input:not([type=checkbox]),.cloud-content textarea,.cloud-content select,.cloud-form input{width:100%;padding:11px;border:1px solid #b99a73;border-radius:9px;background:#fffaf1;color:#38251b;font:inherit}
+.cloud-content textarea{min-height:78px;resize:vertical}
+.cloud-content button,.cloud-form button,.cloud-head button{border:1px solid #9c7148;background:#68452b;color:#fff1d8;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer}
+.cloud-content button:disabled,.cloud-form button:disabled{opacity:.5;cursor:not-allowed}
+.cloud-actions,.cloud-inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cloud-actions>*{flex:1}
+.cloud-link{background:transparent!important;color:#68452b!important;border:0!important;text-decoration:underline}
+.cloud-divider{text-align:center;opacity:.65;font-size:12px}
+.cloud-notice{padding:10px 12px;border-radius:9px;background:#f1dfbd;color:#553a24;overflow-wrap:anywhere}
+.cloud-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #b99a7355}
+.cloud-chat{margin-top:18px;padding:14px;border:1px solid #b99a73;border-radius:12px}
+.cloud-messages{display:flex;flex-direction:column;gap:7px;max-height:240px;overflow:auto;padding:8px;background:#e8d7bd66;border-radius:9px}
+.cloud-messages p{margin:0;align-self:flex-start;max-width:85%;padding:8px 11px;border-radius:10px;background:#fff6e6;overflow-wrap:anywhere}
+.cloud-messages p.mine{align-self:flex-end;background:#d9c29e}
+.cloud-content a{color:#76502e;font-weight:800}
+.cloud-content ol{padding-inline-start:24px;line-height:1.9}
+@media(max-width:600px){.cloud-panel{margin:14px 0;padding:15px}.cloud-head{align-items:flex-start}.cloud-inline>*{min-width:0;flex:1}}
