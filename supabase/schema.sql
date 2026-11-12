@@ -272,7 +272,7 @@ begin
   if auth.uid() is null then raise exception 'Sign in required'; end if;
   if not exists(select 1 from public.rooms where id=target_room and host_id=auth.uid() and status='waiting') then raise exception 'Only the host can edit a waiting room'; end if;
   if jsonb_typeof(layout) <> 'array' or jsonb_array_length(layout) <> 225 then raise exception 'Layout must contain exactly 225 squares'; end if;
-  if exists(select 1 from jsonb_array_elements_text(layout) as v where v not in ('N','TW','DW','TL','DL','START')) then raise exception 'Invalid premium square'; end if;
+  if exists(select 1 from jsonb_array_elements_text(layout) as items(value) where value not in ('N','TW','DW','TL','DL','START')) then raise exception 'Invalid premium square'; end if;
   update public.rooms set premium_layout=layout, updated_at=now() where id=target_room;
 end;
 $$;
