@@ -11,7 +11,7 @@ export const TILE_SETS = Object.freeze({
     ]
   },
   ar: {
-    status: 'draft-total-mismatch',
+    status: 'verified-from-user-table',
     declaredTotal: 110,
     tiles: [
       ['ا',1,8],['إ',1,2],['أ',1,2],['آ',8,1],['ب',1,4],['ج',1,3],
