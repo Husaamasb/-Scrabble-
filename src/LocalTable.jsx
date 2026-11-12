@@ -44,17 +44,16 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   useEffect(()=>{
     if(!session||session.status!=='playing'||turnSeconds===0||(botMode&&session.currentPlayer===1))return;
     const playerIndex=session.currentPlayer;
-    setRemainingSeconds(turnSeconds);
+    let left=turnSeconds;
+    setRemainingSeconds(left);
     const timer=globalThis.setInterval(()=>{
-      setRemainingSeconds(value=>{
-        if(value<=1){
-          globalThis.clearInterval(timer);
-          setSession(current=>current&&current.status==='playing'&&current.currentPlayer===playerIndex?passTurn(current).session:current);
-          setMessage(ar?'انتهى وقت الدور؛ تم تجاوزه تلقائيًا.':'Time is up; the turn was passed automatically.');
-          return turnSeconds;
-        }
-        return value-1;
-      });
+      left-=1;
+      setRemainingSeconds(left);
+      if(left<=0){
+        globalThis.clearInterval(timer);
+        setSession(current=>current&&current.status==='playing'&&current.currentPlayer===playerIndex?passTurn(current).session:current);
+        setMessage(ar?'انتهى وقت الدور؛ تم تجاوزه تلقائيًا.':'Time is up; the turn was passed automatically.');
+      }
     },1000);
     return ()=>globalThis.clearInterval(timer);
   },[session?.currentPlayer,session?.history?.length,session?.status,turnSeconds,botMode,ar]);
