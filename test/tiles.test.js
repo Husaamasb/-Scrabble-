@@ -29,7 +29,9 @@ test('exchange requires enough bag tiles and replaces exactly selected count',()
   const result=exchangeTiles(bag,[{letter:'A'},{letter:'B'}],()=>0.5);
   assert.equal(result.valid,true);
   assert.equal(result.replacements.length,2);
-  assert.equal(result.remaining.length,100);\n  assert.ok(result.remaining.some(tile=>tile.letter==='A'));\n  assert.ok(result.remaining.some(tile=>tile.letter==='B'));
+  assert.equal(result.remaining.length,100);
+  assert.ok(result.remaining.some(tile=>tile.letter==='A'));
+  assert.ok(result.remaining.some(tile=>tile.letter==='B'));
   assert.equal(exchangeTiles([{}],[{},{}]).reason,'not-enough-tiles-in-bag');
 });
 
