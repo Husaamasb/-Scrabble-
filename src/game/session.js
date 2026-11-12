@@ -1,5 +1,5 @@
 import { applyMove, evaluateMove } from './engine.js';
-import { createTileBag, drawTiles, exchangeTiles } from './tiles.js';
+import { createTileBag, drawTiles, exchangeTiles, settleEndgame } from './tiles.js';
 import { validateWords } from './wordValidator.js';
 
 
