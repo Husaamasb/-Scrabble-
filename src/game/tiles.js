@@ -63,11 +63,17 @@ export function exchangeTiles(bag, selectedTiles, random=Math.random) {
   if (!Array.isArray(selectedTiles) || selectedTiles.length===0) return { valid:false, reason:'no-tiles-selected' };
   if (bag.length<selectedTiles.length) return { valid:false, reason:'not-enough-tiles-in-bag' };
   const shuffled=[...bag];
-  for(let i=shuffled.length-1;i>0;i--){
-    const j=Math.floor(random()*(i+1));
-    [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
-  }
-  return { valid:true, replacements:shuffled.slice(0,selectedTiles.length), remaining:shuffled.slice(selectedTiles.length), returned:selectedTiles };
+  const shuffle=items=>{
+    for(let i=items.length-1;i>0;i--){
+      const j=Math.floor(random()*(i+1));
+      [items[i],items[j]]=[items[j],items[i]];
+    }
+    return items;
+  };
+  shuffle(shuffled);
+  const replacements=shuffled.slice(0,selectedTiles.length);
+  const remaining=shuffle([...shuffled.slice(selectedTiles.length),...selectedTiles]);
+  return { valid:true, replacements, remaining, returned:selectedTiles };
 }
 
 export function settleEndgame(scores, racks, finisherIndex) {
