@@ -24,6 +24,16 @@ test('turn commit requires a configured dictionary and does not mutate the sourc
   assert.equal(Object.keys(session.board).length,0);
 });
 
+
+test('a tile cannot be placed twice in one move',async()=>{
+  const session=sampleSession();
+  const reused=session.players[0].rack[0];
+  const result=await commitTurn(session,[{row:7,col:6,tile:reused},{row:7,col:7,tile:reused}],async()=>true);
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,'duplicate-tile');
+  assert.equal(session.players[0].rack.length,7);
+});
+
 test('valid dictionary approval commits score, board, rack refill, and next turn',async()=>{
   const session=sampleSession();
   const result=await commitTurn(session,[{row:7,col:6,tile:session.players[0].rack[0]},{row:7,col:7,tile:session.players[0].rack[1]},{row:7,col:8,tile:session.players[0].rack[2]}],async()=>true);
