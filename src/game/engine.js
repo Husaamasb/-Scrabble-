@@ -35,7 +35,7 @@ function scoreWord(cells, placements) {
   let subtotal = 0, wordMultiplier = 1;
   for (const cell of cells) {
     const tile = cell.tile;
-    let points = Number(tile.points) || 0;
+    let points = tile.isBlank ? 0 : (Number(tile.points) || 0);
     if (placements.has(key(cell.row,cell.col))) {
       const premium = PREMIUM[key(cell.row,cell.col)];
       if (premium === 'DL') points *= 2;
