@@ -22,7 +22,7 @@ Password recovery uses Supabase's secure recovery email link.
 
 In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
 
-## 4. Add the public project settings to GitHub Pages
+## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and saving the host's 15×15 premium-square layout.\n\n5. Add the public project settings to GitHub Pages
 
 In the GitHub repository, open **Settings → Secrets and variables → Actions → Variables** and create:
 
@@ -33,7 +33,7 @@ These are public browser-client values protected by Supabase Row Level Security.
 
 A push to `main` will rebuild and deploy GitHub Pages using these variables. If they are empty, the app intentionally shows a setup message instead of pretending cloud features are connected.
 
-## 5. Local development
+## 6. Local development
 
 Copy `.env.example` to `.env.local`, fill in the same two public values, then run:
 
@@ -51,8 +51,8 @@ npm run dev
 - Player profile and privacy setting.
 - Friend search by public player ID or username, requests, and accept/reject.
 - Online presence while the cloud section is open.
-- Public/private rooms, 2–4 player capacity, six-digit room code, joining, room chat, and direct friend messages.
+- Public/private rooms, 2–4 player capacity, six-digit room code, joining, room chat, and direct friend messages.\n- Room member ready status and host-controlled start after at least two players join and everyone is ready.\n- Host editor for the 15×15 premium-square layout (TW/DW/TL/DL/start), saved to the room.
 
 ## Still required for a complete online game
 
-The cloud lobby and chat are not yet the same thing as a synchronized Scrabble match. Live board/rack/turn synchronization, reconnect recovery, authoritative server-side scoring/word validation, room invitations inbox, and online match result/XP persistence still need implementation and end-to-end testing. Do not treat the project as a finished release yet.
+The cloud lobby and chat are not yet the same thing as a synchronized Scrabble match. Live board/rack/turn synchronization after the lobby starts, reconnect recovery, authoritative server-side scoring/word validation, room invitations inbox, and online match result/XP persistence still need implementation and end-to-end testing. Do not treat the project as a finished release yet.
