@@ -57,7 +57,7 @@ export function createGameSession(language, playerNames, random=Math.random, pre
     tileSerial+=draw.drawn.length;
     return {id:`player-${index+1}`,name,score:0,rack};
   });
-  return {language,players,board:{},bag,currentPlayer:starter.playerIndex,tileSerial,startingDraws:starter.history,
+  return {language,players,board:{},premiumLayout:Array.isArray(premiumLayout)&&premiumLayout.length===225?[...premiumLayout]:[...PREMIUM],bag,currentPlayer:starter.playerIndex,tileSerial,startingDraws:starter.history,
     consecutivePasses:0,status:'playing',winner:null,history:[]};
 }
 
