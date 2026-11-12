@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGameSession, commitTurn, exchangeFromRack, passTurn } from '../src/game/session.js';
+import { createGameSession, chooseStartingPlayer, commitTurn, exchangeFromRack, passTurn } from '../src/game/session.js';
 
 const tile=(id,letter,points)=>({id,letter,points});
 function sampleSession(){
@@ -63,4 +63,10 @@ test('new sessions deal seven tiles to each player and preserve the correct bag 
   assert.equal(arabic.players.reduce((sum,p)=>sum+p.rack.length,0),21);
   assert.equal(arabic.bag.length,89);
   assert.throws(()=>createGameSession('en',['Only one']),/2 to 4 players/);
+});
+
+test('first player is selected by the tile closest to alif/A, ties require redraw',()=>{
+  assert.deepEqual(chooseStartingPlayer(['C','A','B'],'en'),{tie:false,playerIndex:1});
+  assert.deepEqual(chooseStartingPlayer(['ب','ا','ت'],'ar'),{tie:false,playerIndex:1});
+  assert.deepEqual(chooseStartingPlayer(['A','A'],'en'),{tie:true,playerIndices:[0,1]});
 });
