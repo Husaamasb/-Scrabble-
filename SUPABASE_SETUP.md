@@ -22,7 +22,9 @@ Password recovery uses Supabase's secure recovery email link.
 
 In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
 
-## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start,.\n\n5. Add the public project settings to GitHub Pages
+## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start. Premium squares are fixed by the standard board and cannot be edited in rooms.
+
+5. Add the public project settings to GitHub Pages
 
 In the GitHub repository, open **Settings → Secrets and variables → Actions → Variables** and create:
 
@@ -51,7 +53,7 @@ npm run dev
 - Player profile and privacy setting.
 - Friend search by public player ID or username, requests, and accept/reject.
 - Online presence while the cloud section is open.
-- Public/private rooms, 2–4 player capacity, six-digit room code, joining, room chat, and direct friend messages.\n- Room member ready status and host-controlled start after at least two players join and everyone is ready.\n- Host editor for the 15×15 premium-square layout (TW/DW/TL/DL/start), saved to the room.
+- Public/private rooms, 2–4 player capacity, six-digit room code, joining, room chat, and direct friend messages.\n- Room member ready status and host-controlled start after at least two players join and everyone is ready.
 
 ## Still required for a complete online game
 
