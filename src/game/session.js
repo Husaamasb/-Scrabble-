@@ -2,6 +2,25 @@ import { applyMove, evaluateMove } from './engine.js';
 import { createTileBag, drawTiles, exchangeTiles } from './tiles.js';
 import { validateWords } from './wordValidator.js';
 
+
+const EN_ORDER='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const AR_ORDER='ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
+const AR_ALIASES={ا:0,أ:0,إ:0,آ:0,ء:0,ؤ:0,ئ:0,'ئ أول الكلمة':0,'ئ شكل آخر':0,ة:25,ى:27,لا:21,لأ:21,لإ:21,لآ:21};
+function letterRank(letter,language){
+  if(letter==='★')return Number.POSITIVE_INFINITY;
+  if(language==='en')return EN_ORDER.indexOf(String(letter).toUpperCase());
+  if(Object.hasOwn(AR_ALIASES,letter))return AR_ALIASES[letter];
+  return AR_ORDER.indexOf(letter);
+}
+
+export function chooseStartingPlayer(drawnLetters,language){
+  if(!Array.isArray(drawnLetters)||drawnLetters.length<2||drawnLetters.length>4)throw new Error('Draw two to four starting tiles');
+  const ranks=drawnLetters.map(letter=>letterRank(letter,language));
+  const best=Math.min(...ranks);
+  const winners=ranks.map((rank,index)=>rank===best?index:-1).filter(index=>index>=0);
+  return winners.length===1?{tie:false,playerIndex:winners[0]}:{tie:true,playerIndices:winners};
+}
+
 const makeId=(random)=>`tile-${Math.floor(random()*1e12).toString(36)}-${Math.random().toString(36).slice(2,7)}`;
 const addIds=(tiles,random)=>tiles.map(tile=>({...tile,id:makeId(random)}));
 
