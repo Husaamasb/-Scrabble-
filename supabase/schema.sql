@@ -140,7 +140,7 @@ $$;
 
 create or replace function public.is_scrabble_room_member(target_room uuid)
 returns boolean language sql stable security definer set search_path = public
-as $ select exists(select 1 from public.room_members where room_id=target_room and user_id=auth.uid()) $;
+as $func$ select exists(select 1 from public.room_members where room_id=target_room and user_id=auth.uid()) $func$;
 
 alter table public.profiles enable row level security;
 alter table public.friend_requests enable row level security;
@@ -183,7 +183,7 @@ create policy "users leave own room" on public.room_members for delete to authen
 drop policy if exists "room members read chat" on public.room_messages;
 create policy "room members read chat" on public.room_messages for select to authenticated using(public.is_scrabble_room_member(room_id));
 drop policy if exists "room members send chat" on public.room_messages;
-create policy "room members send chat" on public.room_messages for insert to authenticated with check(sender_id=auth.uid() and exists(select 1 from public.room_members m where m.room_id=room_id and m.user_id=auth.uid()));
+create policy "room members send chat" on public.room_messages for insert to authenticated with check(sender_id=auth.uid() and public.is_scrabble_room_member(room_id));
 
 drop policy if exists "direct message participants read" on public.direct_messages;
 create policy "direct message participants read" on public.direct_messages for select to authenticated using(sender_id=auth.uid() or recipient_id=auth.uid());
