@@ -5,12 +5,12 @@ import { validateWords } from './wordValidator.js';
 
 const EN_ORDER='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const AR_ORDER='ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
-const AR_ALIASES={ا:0,أ:0,إ:0,آ:0,ء:0,ؤ:0,ئ:0,'ئ أول الكلمة':0,'ئ شكل آخر':0,ة:25,ى:27,لا:22,لأ:22,لإ:22,لآ:22};
+const AR_ALIASES={ا:0,أ:0,إ:0,آ:0,ء:0,ؤ:0,ئ:0,'ئ أول الكلمة':0,'ئ شكل آخر':0,ة:25,ى:27,يء:27,لا:22,لأ:22,لإ:22,لآ:22};
 function letterRank(letter,language){
   if(letter==='★')return Number.POSITIVE_INFINITY;
-  if(language==='en')return EN_ORDER.indexOf(String(letter).toUpperCase());
+  if(language==='en'){const rank=EN_ORDER.indexOf(String(letter).toUpperCase());return rank<0?Number.POSITIVE_INFINITY:rank;}
   if(Object.hasOwn(AR_ALIASES,letter))return AR_ALIASES[letter];
-  return AR_ORDER.indexOf(letter);
+  const rank=AR_ORDER.indexOf(letter);return rank<0?Number.POSITIVE_INFINITY:rank;
 }
 
 export function chooseStartingPlayer(drawnLetters,language){
