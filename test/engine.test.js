@@ -68,3 +68,10 @@ test('a premium square is not reused after its first placement',()=>{
   assert.equal(move.valid,true);
   assert.equal(move.total,2);
 });
+
+test('blank tile remains zero points even on a triple-letter square',()=>{
+  const board={19:tile('A',1)};
+  const move=evaluateMove(board,[{row:1,col:5,tile:{letter:'X',points:8,isBlank:true}}]);
+  assert.equal(move.valid,true);
+  assert.equal(move.total,1);
+});
