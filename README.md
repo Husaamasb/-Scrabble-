@@ -27,6 +27,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Exact-entry Arabic and English Wiktionary lookup. A move is accepted only when every formed word has an entry; lookup/network failures fail closed.
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
+- Playable same-device multiplayer mode for 2–4 players, with starting-player draw, private turn handoff, scoring, pass/exchange flow, match history, winner display, and automatic local match recovery.
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest and service-worker shell cache.
