@@ -5,8 +5,9 @@ import { createWiktionaryValidator } from './game/wordValidator.js';
 
 const names = ['اللاعب الأول','اللاعب الثاني','اللاعب الثالث','اللاعب الرابع'];
 function loadLocalSession(language){try{const saved=JSON.parse(globalThis.localStorage?.getItem('scrabble:local-session:'+language)||'null');return saved?.version===1&&saved.session?.players?.length>=2?saved.session:null;}catch{return null;}}
-export default function LocalTable({ language, onExit }) {
+export default function LocalTable({ language, onExit, botMode=false }) {
   const [count,setCount]=useState(2);
+  const [difficulty,setDifficulty]=useState(3);
   const [session,setSession]=useState(()=>loadLocalSession(language));
   const [pending,setPending]=useState([]);
   const [selected,setSelected]=useState(null);
@@ -18,11 +19,11 @@ export default function LocalTable({ language, onExit }) {
   const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
   useEffect(()=>{try{if(session)globalThis.localStorage?.setItem('scrabble:local-session:'+language,JSON.stringify({version:1,session}));else globalThis.localStorage?.removeItem('scrabble:local-session:'+language);}catch{}},[session,language]);
   const ar=language==='ar';
-  const start=()=>{setSession(createGameSession(language,names.slice(0,count)));setPending([]);setSelected(null);setExchange([]);setMessage('');};
+  const start=()=>{setSession(createGameSession(language,botMode?['أنت','البوت']:names.slice(0,count)));setPending([]);setSelected(null);setExchange([]);setMessage('');};
   if(!session)return <section className="local-setup" dir={ar?'rtl':'ltr'}>
     <h2>{ar?'لعب جماعي على نفس الجهاز':'Same-device multiplayer'}</h2>
     <p>{ar?'اختاروا عدد اللاعبين، ومرروا الجهاز بعد نهاية كل دور.':'Choose the player count and pass the device after each turn.'}</p>
-    <label>{ar?'عدد اللاعبين':'Players'} <select value={count} onChange={e=>setCount(Number(e.target.value))}>{[2,3,4].map(n=><option key={n} value={n}>{n}</option>)}</select></label>
+    <label>{botMode?(ar?'مستوى البوت':'Bot level'):(ar?'عدد اللاعبين':'Players')} <select value={botMode?difficulty:count} onChange={e=>botMode?setDifficulty(Number(e.target.value)):setCount(Number(e.target.value))}>{(botMode?[1,2,3,4,5]:[2,3,4]).map(n=><option key={n} value={n}>{n}</option>)}</select></label>
     <button className="primary" onClick={start}>{ar?'ابدأ المباراة':'Start match'}</button>
     <button onClick={onExit}>{ar?'رجوع':'Back'}</button>
   </section>;
@@ -54,7 +55,7 @@ export default function LocalTable({ language, onExit }) {
   const doPass=()=>{if(pending.length){setMessage(ar?'أزل القطع الموضوعة أولاً.':'Undo placed tiles first.');return;}const result=passTurn(session);setSession(result.session);setMessage(result.session.status==='finished'?(ar?'انتهت المباراة.':'Match finished.'):(ar?'تم تجاوز الدور.':'Turn passed.'));};
   const doExchange=()=>{if(pending.length||!exchange.length){setMessage(ar?'حدد قطعاً للتبديل بعد إزالة الحركة الحالية.':'Select tiles to exchange after clearing the current move.');return;}const result=exchangeFromRack(session,exchange);if(!result.ok){setMessage(ar?'تعذر تبديل القطع: '+result.reason:'Exchange failed: '+result.reason);return;}setSession(result.session);setExchange([]);setMessage(ar?'تم تبديل القطع وانتهى دورك.':'Tiles exchanged; your turn is over.');};
   return <main className="local-table" dir={ar?'rtl':'ltr'}>
-    <header className="local-header"><div><small>{ar?'مباراة محلية':'LOCAL MATCH'}</small><h2>{session.status==='finished'?(ar?'انتهت المباراة':'Match finished'):(ar?'دور':'Turn')+' — '+player.name}</h2></div><button onClick={onExit}>{ar?'خروج':'Exit'}</button></header>
+    <header className="local-header"><div><small>{botMode?(ar?'مباراة ضد البوت':'VS BOT'):(ar?'مباراة محلية':'LOCAL MATCH')}</small><h2>{session.status==='finished'?(ar?'انتهت المباراة':'Match finished'):(ar?'دور':'Turn')+' — '+player.name}</h2></div><button onClick={onExit}>{ar?'خروج':'Exit'}</button></header>
     <div className="local-scores">{session.players.map((p,i)=><div className={i===session.currentPlayer?'current':''} key={p.id}><span>{p.name}</span><b>{p.score}</b><small>{ar?'قطع':'Tiles'}: {p.rack.length}</small></div>)}</div>
     {session.status==='finished'&&<><h2 className="winner">{ar?'الفائز: ':'Winner: '}{session.players.find(p=>p.id===session.winner)?.name}</h2><button className="primary" onClick={()=>setSession(null)}>{ar?'ابدأ مباراة جديدة':'Start a new match'}</button></>}
     <div className="local-board-area"><div className="board">{cells.map(i=>{const tile=visibleBoard[i];const p=PREMIUM[i]||'';return <button key={i} className={'cell '+(tile?'filled':p.toLowerCase())} disabled={busy||session.status==='finished'} onClick={()=>place(i)}>{tile?<><b>{tile.blankAs||tile.letter}</b><small>{tile.points}</small></>:p==='TW'?'3W':p==='DW'?'2W':p==='TL'?'3L':p==='DL'?'2L':i===112?'★':''}</button>;})}</div></div>
