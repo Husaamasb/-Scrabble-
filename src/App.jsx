@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { PREMIUM } from './game/engine.js';
 
 const LETTERS = {
   ar: [['ا',1],['ب',1],['ت',1],['ث',1],['ج',1],['ح',1],['خ',1],['د',1],['ذ',1],['ر',1],['ز',2],['س',1],['ش',2],['ص',2],['ض',3],['ط',2],['ظ',4],['ع',2],['غ',4],['ف',1],['ق',2],['ك',3],['ل',1],['م',1],['ن',1],['ه',1],['و',1],['ي',1],['ء',8],['★',0]],
@@ -8,11 +9,7 @@ const COPY = {
   ar:{tag:'لعبة الكلمات الكلاسيكية',start:'ابدأ اللعب',arabic:'العربية',english:'English',turn:'دور اللاعب',score:'النقاط',rack:'قطعك',bag:'القطع المتبقية',confirm:'تأكيد الكلمة',exchange:'تبديل القطع',pass:'تجاوز الدور',clear:'إزالة التحديد',hint:'اختر قطعة من صندوقك ثم اضغط مربعًا في اللوحة.',notice:'هذه نسخة تأسيسية؛ التحقق من القاموس وحفظ الحسابات والأونلاين ستضاف في مراحل التطوير التالية.'},
   en:{tag:'The classic word game',start:'Start playing',arabic:'العربية',english:'English',turn:"Player's turn",score:'Score',rack:'Your tiles',bag:'Tiles left',confirm:'Confirm word',exchange:'Exchange tiles',pass:'Pass turn',clear:'Clear selection',hint:'Choose a tile from your rack, then tap a board square.',notice:'This is the foundation build. Dictionary validation, accounts, saving and online play are still to be implemented.'}
 };
-const premium = new Set([0,7,14,105,112,119,210,217,224]);
-const doubleWord = new Set([16,28,32,42,48,56,64,70,154,160,168,176,182,192,196,208]);
-const tripleLetter = new Set([20,24,76,80,84,88,136,140,144,148,200,204]);
-const doubleLetter = new Set([3,11,36,38,45,52,59,92,96,98,102,108,116,122,126,128,132,138,152,156,164,166,172,179,186,188,213,221]);
-function premiumAt(i){ if(i===112)return 'START'; if(premium.has(i))return 'TW'; if(doubleWord.has(i))return 'DW'; if(tripleLetter.has(i))return 'TL'; if(doubleLetter.has(i))return 'DL'; return ''; }
+function premiumAt(i){ return i===112 ? 'START' : (PREMIUM[i] || ''); }
 function makeRack(lang){const pool=LETTERS[lang]; return Array.from({length:7},(_,i)=>{const x=pool[Math.floor(Math.random()*pool.length)];return {id:crypto.randomUUID?.()||String(Date.now()+i),letter:x[0],points:x[1]};});}
 export default function App(){
   const [lang,setLang]=useState('ar'); const t=COPY[lang];
