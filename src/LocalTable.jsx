@@ -45,7 +45,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     runBot();return ()=>{cancelled=true;};
   },[botMode,session?.currentPlayer,session?.history?.length,session?.status,difficulty]);
   useEffect(()=>{
-    if(!session||session.status!=='playing'||turnSeconds===0||(botMode&&session.currentPlayer===1))return;
+    if(!session||session.status!=='playing'||turnSeconds===0)return;
     const playerIndex=session.currentPlayer;
     let left=turnSeconds;
     setRemainingSeconds(left);
@@ -55,7 +55,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
       if(left<=0){
         globalThis.clearInterval(timer);
         setSession(current=>current&&current.status==='playing'&&current.currentPlayer===playerIndex?passTurn(current).session:current);
-        setMessage(ar?'انتهى وقت الدور؛ تم تجاوزه تلقائيًا.':'Time is up; the turn was passed automatically.');
+        setMessage(ar?(botMode&&playerIndex===1?'انتهى وقت البوت؛ تم تجاوز دوره.':'انتهى وقت الدور؛ تم تجاوزه تلقائيًا.'):(botMode&&playerIndex===1?'Bot time expired; its turn was passed.':'Time is up; the turn was passed automatically.'));
       }
     },1000);
     return ()=>globalThis.clearInterval(timer);
@@ -73,7 +73,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
         <button type="button" onClick={()=>setPremiumLayout([...PREMIUM])}>{ar?'استعادة التوزيع الأصلي':'Restore standard layout'}</button>
       </>}
     </div>}
-    {!botMode&&<label>{ar?'مدة دور كل لاعب':'Turn duration'} <select value={turnSeconds} onChange={e=>setTurnSeconds(Number(e.target.value))}>{[{value:30,ar:'30 ثانية',en:'30 seconds'},{value:60,ar:'دقيقة واحدة',en:'1 minute'},{value:90,ar:'دقيقة ونصف',en:'90 seconds'},{value:120,ar:'دقيقتان',en:'2 minutes'},{value:0,ar:'بدون مؤقت',en:'No timer'}].map(o=><option key={o.value} value={o.value}>{ar?o.ar:o.en}</option>)}</select></label>}
+    <label>{ar?'مدة دور كل لاعب':'Turn duration'} <select value={turnSeconds} onChange={e=>setTurnSeconds(Number(e.target.value))}>{[{value:30,ar:'30 ثانية',en:'30 seconds'},{value:60,ar:'دقيقة واحدة',en:'1 minute'},{value:90,ar:'دقيقة ونصف',en:'90 seconds'},{value:120,ar:'دقيقتان',en:'2 minutes'},{value:0,ar:'بدون مؤقت',en:'No timer'}].map(o=><option key={o.value} value={o.value}>{ar?o.ar:o.en}</option>)}</select></label>
     <button className="primary" onClick={start}>{ar?'ابدأ المباراة':'Start match'}</button>
     <button onClick={onExit}>{ar?'رجوع':'Back'}</button>
   </section>;
@@ -106,7 +106,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const doExchange=()=>{if(pending.length||!exchange.length){setMessage(ar?'حدد قطعاً للتبديل بعد إزالة الحركة الحالية.':'Select tiles to exchange after clearing the current move.');return;}const result=exchangeFromRack(session,exchange);if(!result.ok){setMessage(ar?'تعذر تبديل القطع: '+result.reason:'Exchange failed: '+result.reason);return;}setSession(result.session);setExchange([]);setMessage(ar?'تم تبديل القطع وانتهى دورك.':'Tiles exchanged; your turn is over.');};
   return <main className="local-table" dir={ar?'rtl':'ltr'}>
     <header className="local-header"><div><small>{botMode?(ar?'مباراة ضد البوت':'VS BOT'):(ar?'مباراة محلية':'LOCAL MATCH')}</small><h2>{session.status==='finished'?(ar?'انتهت المباراة':'Match finished'):(ar?'دور':'Turn')+' — '+player.name}</h2></div><button onClick={onExit}>{ar?'خروج':'Exit'}</button></header>
-    {session.status==='playing'&&turnSeconds>0&&!(botMode&&session.currentPlayer===1)&&<div className="turn-timer" role="timer"><span>{ar?'الوقت المتبقي للدور':'Time left in turn'}</span><strong>{Math.floor(remainingSeconds/60)}:{String(remainingSeconds%60).padStart(2,'0')}</strong></div>}
+    {session.status==='playing'&&turnSeconds>0&&<div className="turn-timer" role="timer"><span>{ar?'الوقت المتبقي للدور':'Time left in turn'}</span><strong>{Math.floor(remainingSeconds/60)}:{String(remainingSeconds%60).padStart(2,'0')}</strong></div>}
     <div className="local-scores">{session.players.map((p,i)=><div className={i===session.currentPlayer?'current':''} key={p.id}><span>{p.name}</span><b>{p.score}</b><small>{ar?'قطع':'Tiles'}: {p.rack.length}</small></div>)}</div>
     {session.status==='finished'&&<><h2 className="winner">{ar?'الفائز: ':'Winner: '}{session.players.find(p=>p.id===session.winner)?.name}</h2><button className="primary" onClick={()=>setSession(null)}>{ar?'ابدأ مباراة جديدة':'Start a new match'}</button></>}
     <div className="local-board-area"><div className="board">{cells.map(i=>{const tile=visibleBoard[i];const p=(session.premiumLayout||PREMIUM)[i]||'';return <button key={i} className={'cell '+(tile?'filled':p.toLowerCase())} disabled={busy||session.status==='finished'} onClick={()=>place(i)}>{tile?<><b>{tile.blankAs||tile.letter}</b><small>{tile.points}</small></>:p==='TW'?'3W':p==='DW'?'2W':p==='TL'?'3L':p==='DL'?'2L':i===112?'★':''}</button>;})}</div></div>
