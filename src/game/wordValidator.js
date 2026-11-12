@@ -7,6 +7,8 @@ export function createWiktionaryValidator(fetchImpl = globalThis.fetch) {
     if (typeof fetchImpl !== 'function') throw new Error('dictionary-fetch-unavailable');
     const lang = language === 'ar' ? 'ar' : language === 'en' ? 'en' : null;
     if (!lang || typeof word !== 'string' || !word.trim()) return false;
+    const cacheKey = `scrabble:dictionary:${lang}:${word.trim()}`;
+    try { if (globalThis.localStorage?.getItem(cacheKey) === 'valid') return true; } catch {}
     const endpoint = new URL(`https://${lang}.wiktionary.org/w/api.php`);
     endpoint.search = new URLSearchParams({
       action: 'query',
@@ -19,7 +21,9 @@ export function createWiktionaryValidator(fetchImpl = globalThis.fetch) {
     if (!response.ok) throw new Error(`dictionary-http-${response.status}`);
     const data = await response.json();
     const page = data?.query?.pages?.[0];
-    return Boolean(page && !page.missing && !page.invalid);
+    const valid = Boolean(page && !page.missing && !page.invalid);
+    if (valid) { try { globalThis.localStorage?.setItem(cacheKey, 'valid'); } catch {} }
+    return valid;
   };
 }
 
