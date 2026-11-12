@@ -19,7 +19,7 @@ test('hardest level only explores the strongest score group first',()=>{
 });
 
 test('easiest level can choose from the full candidate set',()=>{
-  const ordered=orderBotMoves(moves,1,()=>0.5);
+  const ordered=orderBotMoves(moves,1,()=>0);
   assert.equal(ordered.length,20);
   assert.notEqual(ordered[0],moves[0]);
 });
