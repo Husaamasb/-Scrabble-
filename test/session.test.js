@@ -91,3 +91,12 @@ test('session tile IDs use the injected random source deterministically',()=>{
   const second=createGameSession('en',['One','Two'],()=>0.25);
   assert.deepEqual(first.players.map(p=>p.rack.map(tile=>tile.id)),second.players.map(p=>p.rack.map(tile=>tile.id)));
 });
+
+test('new sessions retain the host-selected premium square layout',()=>{
+  const custom=Array(225).fill(null);custom[112]='TW';custom[0]='TL';
+  const game=createGameSession('en',['One','Two'],()=>0.43,custom);
+  assert.equal(game.premiumLayout.length,225);
+  assert.equal(game.premiumLayout[112],'TW');
+  assert.equal(game.premiumLayout[0],'TL');
+  assert.equal(game.premiumLayout[113],null);
+});
