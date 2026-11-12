@@ -10,9 +10,9 @@ test('English tile set matches the specified 100 tiles',()=>{
 test('Arabic tile table is preserved without silently changing the unresolved total',()=>{
   const report=tileSetReport('ar');
   assert.equal(report.declaredTotal,110);
-  assert.equal(report.actualTotal,109);
-  assert.equal(report.ready,false);
-  assert.throws(()=>createTileBag('ar'),/not ready/);
+  assert.equal(report.actualTotal,110);
+  assert.equal(report.ready,true);
+  assert.equal(createTileBag('ar',()=>0.5).length,110);
   assert.ok(TILE_SETS.ar.tiles.some(row=>row[0]==='ئ أول الكلمة'));
   assert.ok(TILE_SETS.ar.tiles.some(row=>row[0]==='ئ شكل آخر'));
 });
