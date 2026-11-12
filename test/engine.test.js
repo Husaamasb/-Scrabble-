@@ -83,3 +83,10 @@ test('one new tile scores every cross-word it creates',()=>{
   assert.equal(move.words.length,2);
   assert.equal(move.total,18);
 });
+
+test('custom premium layouts override the standard square multipliers',()=>{
+  const custom=Array(225).fill(null);custom[112]='TW';
+  const move=evaluateMove({},[{row:7,col:6,tile:tile('C',3)},{row:7,col:7,tile:tile('A',1)},{row:7,col:8,tile:tile('T',1)}],custom);
+  assert.equal(move.valid,true);
+  assert.equal(move.total,15);
+});
