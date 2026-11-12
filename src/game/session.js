@@ -1,4 +1,4 @@
-import { applyMove, evaluateMove } from './engine.js';
+import { applyMove, evaluateMove, PREMIUM } from './engine.js';
 import { createTileBag, drawTiles, exchangeTiles, settleEndgame } from './tiles.js';
 import { validateWords } from './wordValidator.js';
 
@@ -43,7 +43,7 @@ function drawStartingOrder(bag,playerCount,language,random){
   return {playerIndex:eligible[0],history,tieBreakLimitReached:true};
 }
 
-export function createGameSession(language, playerNames, random=Math.random) {
+export function createGameSession(language, playerNames, random=Math.random, premiumLayout=PREMIUM) {
   if (!Array.isArray(playerNames)||playerNames.length<2||playerNames.length>4) {
     throw new Error('A Scrabble session needs 2 to 4 players');
   }
@@ -69,12 +69,13 @@ export async function commitTurn(session, placements, dictionaryValidator, rando
   const placedIds=placements.map(p=>p.tile?.id);
   if(placedIds.some(id=>!rackIds.has(id))) return {ok:false,reason:'tile-not-in-current-rack'};
   if(new Set(placedIds).size!==placedIds.length) return {ok:false,reason:'duplicate-tile'};
-  const evaluation=evaluateMove(session.board,placements);
+  const premiumLayout=Array.isArray(session.premiumLayout)&&session.premiumLayout.length===225?session.premiumLayout:PREMIUM;
+  const evaluation=evaluateMove(session.board,placements,premiumLayout);
   if(!evaluation.valid) return {ok:false,reason:evaluation.reason};
   const dictionary=await validateWords(evaluation.words,session.language,dictionaryValidator);
   if(!dictionary.valid) return {ok:false,reason:dictionary.reason||'word-not-accepted',dictionary};
 
-  const applied=applyMove(session.board,placements);
+  const applied=applyMove(session.board,placements,premiumLayout);
   const used=new Set(placements.map(p=>p.tile.id));
   const remainingRack=player.rack.filter(tile=>!used.has(tile.id));
   const draw=drawTiles(session.bag,7-remainingRack.length);
