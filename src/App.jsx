@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PREMIUM, evaluateMove } from './game/engine.js';
 import { createTileBag, drawTiles } from './game/tiles.js';
 
@@ -6,14 +6,17 @@ const COPY = {
   ar:{tag:'لعبة الكلمات الكلاسيكية',start:'ابدأ اللعب',arabic:'العربية',english:'English',turn:'دور اللاعب',score:'النقاط',rack:'قطعك',bag:'القطع المتبقية',confirm:'تأكيد الكلمة',exchange:'تبديل القطع',pass:'تجاوز الدور',clear:'إزالة التحديد',hint:'اختر قطعة من صندوقك ثم اضغط مربعًا في اللوحة.',notice:'هذه نسخة تأسيسية؛ التحقق من القاموس وحفظ الحسابات والأونلاين ستضاف في مراحل التطوير التالية.'},
   en:{tag:'The classic word game',start:'Start playing',arabic:'العربية',english:'English',turn:"Player's turn",score:'Score',rack:'Your tiles',bag:'Tiles left',confirm:'Confirm word',exchange:'Exchange tiles',pass:'Pass turn',clear:'Clear selection',hint:'Choose a tile from your rack, then tap a board square.',notice:'This is the foundation build. Dictionary validation, accounts, saving and online play are still to be implemented.'}
 };
+function loadActiveGame(){try{const saved=JSON.parse(globalThis.localStorage?.getItem('scrabble:active-game:v1')||'null');if(saved&&['ar','en'].includes(saved.lang)&&saved.tileState&&Array.isArray(saved.tileState.rack)&&Array.isArray(saved.tileState.bag)&&saved.board&&typeof saved.board==='object'&&Array.isArray(saved.pending))return saved;}catch{}return null;}
 function premiumAt(i){ return i===112 ? 'START' : (PREMIUM[i] || ''); }
 function makeTileState(lang){const bag=createTileBag(lang);const draw=drawTiles(bag,7);return {rack:draw.drawn.map((tile,i)=>({...tile,id:globalThis.crypto?.randomUUID?.()||String(Date.now()+i)})),bag:draw.remaining};}
 export default function App(){
-  const [lang,setLang]=useState('ar'); const t=COPY[lang];
-  const [started,setStarted]=useState(false); const [tileState,setTileState]=useState(()=>makeTileState('ar')); const rack=tileState.rack; const bag=tileState.bag;
-  const [board,setBoard]=useState({}); const [pending,setPending]=useState([]); const [selected,setSelected]=useState(null); const [score,setScore]=useState(0); const [message,setMessage]=useState('');
-  const [dark,setDark]=useState(false); const [blankChoice,setBlankChoice]=useState('');
+  const [savedAtStart]=useState(loadActiveGame);
+  const [lang,setLang]=useState(()=>savedAtStart?.lang||'ar'); const t=COPY[lang];
+  const [started,setStarted]=useState(()=>Boolean(savedAtStart?.started)); const [tileState,setTileState]=useState(()=>savedAtStart?.tileState||makeTileState('ar')); const rack=tileState.rack; const bag=tileState.bag;
+  const [board,setBoard]=useState(()=>savedAtStart?.board||{}); const [pending,setPending]=useState(()=>savedAtStart?.pending||[]); const [selected,setSelected]=useState(null); const [score,setScore]=useState(()=>Number(savedAtStart?.score)||0); const [message,setMessage]=useState('');
+  const [dark,setDark]=useState(()=>Boolean(savedAtStart?.dark)); const [blankChoice,setBlankChoice]=useState('');
   const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
+  useEffect(()=>{try{globalThis.localStorage?.setItem('scrabble:active-game:v1',JSON.stringify({lang,started,tileState,board,pending,score,dark}));}catch{}},[lang,started,tileState,board,pending,score,dark]);
   function changeLang(next){setBlankChoice('');setLang(next);setTileState(makeTileState(next));setSelected(null);setBoard({});setPending([]);setScore(0);setMessage('');}
   function place(i){if(selected===null||board[i])return;const tile=rack.find(x=>x.id===selected);if(!tile)return;if(tile.isBlank&&!blankChoice.trim()){setMessage(lang==='ar'?'اختر الحرف الذي سيمثله الجوكر أولاً.':'Choose the letter for the blank tile first.');return;}const placedTile=tile.isBlank?{...tile,blankAs:blankChoice.trim()}:tile;setBoard(b=>({...b,[i]:placedTile}));setPending(p=>[...p,i]);setTileState(s=>({...s,rack:s.rack.filter(x=>x.id!==selected)}));setSelected(null);setBlankChoice('');setMessage('');}
   function undoLast(){const i=pending[pending.length-1];if(i===undefined)return;const tile=board[i];setBoard(b=>{const next={...b};delete next[i];return next;});setPending(p=>p.slice(0,-1));setTileState(s=>({...s,rack:[...s.rack,tile]}));setMessage('');}
