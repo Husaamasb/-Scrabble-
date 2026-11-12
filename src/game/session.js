@@ -43,7 +43,7 @@ function drawStartingOrder(bag,playerCount,language,random){
   return {playerIndex:eligible[0],history,tieBreakLimitReached:true};
 }
 
-export function createGameSession(language, playerNames, random=Math.random, premiumLayout=PREMIUM) {
+export function createGameSession(language, playerNames, random=Math.random) {
   if (!Array.isArray(playerNames)||playerNames.length<2||playerNames.length>4) {
     throw new Error('A Scrabble session needs 2 to 4 players');
   }
@@ -57,7 +57,7 @@ export function createGameSession(language, playerNames, random=Math.random, pre
     tileSerial+=draw.drawn.length;
     return {id:`player-${index+1}`,name,score:0,rack};
   });
-  return {language,players,board:{},premiumLayout:Array.isArray(premiumLayout)&&premiumLayout.length===225?[...premiumLayout]:[...PREMIUM],bag,currentPlayer:starter.playerIndex,tileSerial,startingDraws:starter.history,
+  return {language,players,board:{},bag,currentPlayer:starter.playerIndex,tileSerial,startingDraws:starter.history,
     consecutivePasses:0,status:'playing',winner:null,history:[]};
 }
 
@@ -69,13 +69,12 @@ export async function commitTurn(session, placements, dictionaryValidator, rando
   const placedIds=placements.map(p=>p.tile?.id);
   if(placedIds.some(id=>!rackIds.has(id))) return {ok:false,reason:'tile-not-in-current-rack'};
   if(new Set(placedIds).size!==placedIds.length) return {ok:false,reason:'duplicate-tile'};
-  const premiumLayout=Array.isArray(session.premiumLayout)&&session.premiumLayout.length===225?session.premiumLayout:PREMIUM;
-  const evaluation=evaluateMove(session.board,placements,premiumLayout);
+  const evaluation=evaluateMove(session.board,placements,PREMIUM);
   if(!evaluation.valid) return {ok:false,reason:evaluation.reason};
   const dictionary=await validateWords(evaluation.words,session.language,dictionaryValidator);
   if(!dictionary.valid) return {ok:false,reason:dictionary.reason||'word-not-accepted',dictionary};
 
-  const applied=applyMove(session.board,placements,premiumLayout);
+  const applied=applyMove(session.board,placements,PREMIUM);
   const used=new Set(placements.map(p=>p.tile.id));
   const remainingRack=player.rack.filter(tile=>!used.has(tile.id));
   const draw=drawTiles(session.bag,7-remainingRack.length);
