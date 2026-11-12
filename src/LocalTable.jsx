@@ -5,7 +5,8 @@ import { createWiktionaryValidator } from './game/wordValidator.js';
 import { findBotMoves, orderBotMoves } from './game/bot.js';
 
 const names = ['اللاعب الأول','اللاعب الثاني','اللاعب الثالث','اللاعب الرابع'];
-function loadLocalSession(language){try{const saved=JSON.parse(globalThis.localStorage?.getItem('scrabble:local-session:'+language)||'null');return saved?.version===1&&saved.session?.players?.length>=2?saved.session:null;}catch{return null;}}
+function localSessionKey(language,botMode){return 'scrabble:local-session:'+language+':'+(botMode?'bot':'local');}
+function loadLocalSession(language,botMode){try{const key=localSessionKey(language,botMode);const saved=JSON.parse(globalThis.localStorage?.getItem(key)||'null');if(saved?.version===1&&saved.session?.players?.length>=2)return saved.session;if(!botMode){const legacy=JSON.parse(globalThis.localStorage?.getItem('scrabble:local-session:'+language)||'null');if(legacy?.version===1&&legacy.session?.players?.length>=2)return legacy.session;}return null;}catch{return null;}}
 export default function LocalTable({ language, onExit, botMode=false }) {
   const [count,setCount]=useState(2);
   const [difficulty,setDifficulty]=useState(3);
@@ -13,7 +14,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const [chestOpen,setChestOpen]=useState(true);
   const [editingPremium,setEditingPremium]=useState(false);
   const [premiumTool,setPremiumTool]=useState('TW');
-  const [session,setSession]=useState(()=>loadLocalSession(language));
+  const [session,setSession]=useState(()=>loadLocalSession(language,botMode));
   const [pending,setPending]=useState([]);
   const [selected,setSelected]=useState(null);
   const [blankChoice,setBlankChoice]=useState('');
@@ -22,7 +23,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const [message,setMessage]=useState('');
   const [mode,setMode]=useState('local');
   const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
-  useEffect(()=>{try{if(session)globalThis.localStorage?.setItem('scrabble:local-session:'+language,JSON.stringify({version:1,session}));else globalThis.localStorage?.removeItem('scrabble:local-session:'+language);}catch{}},[session,language]);
+  useEffect(()=>{try{const key=localSessionKey(language,botMode);if(session)globalThis.localStorage?.setItem(key,JSON.stringify({version:1,session}));else globalThis.localStorage?.removeItem(key);}catch{}},[session,language,botMode]);
   const ar=language==='ar';
   const start=()=>{const game=createGameSession(language,botMode?['أنت','البوت']:names.slice(0,count),Math.random,premiumLayout);game.matchId=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);setSession(game);setPending([]);setSelected(null);setExchange([]);setMessage('');};
   useEffect(()=>{
