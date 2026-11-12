@@ -27,3 +27,8 @@
 .app{padding-bottom:100px}
 .nav-section{margin-top:0}
 @media(max-width:560px){.home-hub{padding:18px 12px;margin-top:3vh}.home-hub-title h2{font-size:23px}.play-option{grid-template-columns:54px 1fr;padding:10px 12px}.play-option>span{width:46px;height:46px}.bottom-nav button{flex-basis:72px;min-width:72px}.bottom-nav small{font-size:9px}}
+
+/* Center the four requested game modes in the main screen */
+.home-hub{min-height:calc(100svh - 190px);display:flex;flex-direction:column;justify-content:center;margin:0 auto 100px}
+.main-play-options{width:100%;max-width:440px;margin:0 auto}
+@media(min-width:700px){.home-hub{margin:0 auto 100px}.main-play-options{grid-template-columns:1fr}}
