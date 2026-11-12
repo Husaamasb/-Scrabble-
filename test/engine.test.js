@@ -42,3 +42,29 @@ test('dictionary adapter fails closed when no AI dictionary is configured',async
   assert.equal((await validateWords([{letters:'CAT'}],'en')).reason,'dictionary-service-not-configured');
   assert.equal((await validateWords([{letters:'CAT'}],'en',async()=>true)).valid,true);
 });
+
+test('blank tile stays worth zero even when placed on a word premium',()=>{
+  const move=evaluateMove({},[
+    {row:7,col:6,tile:{letter:'?',blankAs:'C',points:0,isBlank:true}},
+    {row:7,col:7,tile:tile('A',1)},
+    {row:7,col:8,tile:tile('T',1)}
+  ]);
+  assert.equal(move.valid,true);
+  assert.equal(move.words[0].letters,'CAT');
+  assert.equal(move.total,4);
+});
+
+test('using all seven tiles earns the 50 point bonus',()=>{
+  const placements=Array.from({length:7},(_,i)=>({row:7,col:4+i,tile:tile('A',1)}));
+  const move=evaluateMove({},placements);
+  assert.equal(move.valid,true);
+  assert.equal(move.bingo,50);
+  assert.equal(move.total,64);
+});
+
+test('a premium square is not reused after its first placement',()=>{
+  const board={112:tile('A',1)};
+  const move=evaluateMove(board,[{row:7,col:8,tile:tile('T',1)}]);
+  assert.equal(move.valid,true);
+  assert.equal(move.total,2);
+});
