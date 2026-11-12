@@ -28,7 +28,6 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
 - Playable same-device multiplayer mode for 2–4 players, with starting-player draw, private turn handoff, scoring, pass/exchange flow, match history, winner display, and automatic local match recovery.
-- Configurable per-turn countdown (30/60/90/120 seconds or no timer), including automatic pass on timeout for human and bot turns.
 - Interactive 15×15 premium-square editor for new local matches: triple/double word, triple/double letter, clearing squares, restoring the standard layout, and persisting the chosen layout in the match session. The bot and scoring engine use that selected layout.
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
