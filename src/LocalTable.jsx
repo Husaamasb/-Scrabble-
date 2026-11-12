@@ -25,7 +25,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
   useEffect(()=>{try{if(session)globalThis.localStorage?.setItem('scrabble:local-session:'+language,JSON.stringify({version:1,session}));else globalThis.localStorage?.removeItem('scrabble:local-session:'+language);}catch{}},[session,language]);
   const ar=language==='ar';
-  const start=()=>{setSession(createGameSession(language,botMode?['أنت','البوت']:names.slice(0,count),Math.random,premiumLayout));setPending([]);setSelected(null);setExchange([]);setMessage('');};
+  const start=()=>{const game=createGameSession(language,botMode?['أنت','البوت']:names.slice(0,count),Math.random,premiumLayout);game.matchId=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);game.turnSeconds=turnSeconds;setSession(game);setPending([]);setSelected(null);setExchange([]);setMessage('');};
   useEffect(()=>{
     if(!botMode||!session||session.status!=='playing'||session.currentPlayer!==1||busy)return;
     let cancelled=false;
@@ -60,6 +60,20 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     },1000);
     return ()=>globalThis.clearInterval(timer);
   },[session?.currentPlayer,session?.history?.length,session?.status,turnSeconds,botMode,ar]);
+  useEffect(()=>{
+    if(!botMode||!session||session.status!=='finished'||!session.matchId)return;
+    const awardKey='scrabble:xp-awarded:'+session.matchId;
+    try{
+      if(globalThis.localStorage?.getItem(awardKey))return;
+      const data=JSON.parse(globalThis.localStorage?.getItem('scrabble:dashboard:v1')||'{}');
+      const human=session.players[0],bot=session.players[1];
+      const delta=human.score>bot.score?20:human.score===bot.score?15:-5;
+      data.xp=Math.max(0,(Number(data.xp)||0)+delta);
+      globalThis.localStorage?.setItem('scrabble:dashboard:v1',JSON.stringify(data));
+      globalThis.localStorage?.setItem(awardKey,'1');
+      setMessage(ar?(delta===20?'فزت بالمباراة! حصلت على 20 XP.':delta===15?'تعادل! حصلت على 15 XP.':'انتهت المباراة. تم خصم 5 XP.'):(delta===20?'You won! +20 XP.':delta===15?'Draw! +15 XP.':'Match lost. -5 XP.'));
+    }catch{}
+  },[botMode,session?.status,session?.matchId]);
   if(!session)return <section className="local-setup" dir={ar?'rtl':'ltr'}>
     <h2>{ar?'لعب جماعي على نفس الجهاز':'Same-device multiplayer'}</h2>
     <p>{ar?'اختاروا عدد اللاعبين ومدة الدور قبل بدء المباراة.':'Choose the player count and turn duration before starting.'}</p>
