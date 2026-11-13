@@ -20,9 +20,9 @@ test('Arabic tile table is preserved without silently changing the unresolved to
 
 test('Supabase server distributions exactly match the browser tile tables',()=>{
   const schema=readFileSync(new URL('../supabase/schema.sql',import.meta.url),'utf8');
-  const languageBlocks=schema.match(/if target\\.language='en' then([\\s\\S]*?)elsif target\\.language='ar' then([\\s\\S]*?)else\\s+raise exception 'Unsupported room language'/);
+  const languageBlocks=schema.match(/if target\.language='en' then([\s\S]*?)elsif target\.language='ar' then([\s\S]*?)else\s+raise exception 'Unsupported room language'/);
   assert.ok(languageBlocks,'server tile distribution branches must exist');
-  const extract=block=>[...block.matchAll(/\\('([^']+)',\\s*(\\d+),\\s*(\\d+)\\)/g)]
+  const extract=block=>[...block.matchAll(/\('([^']+)',\s*(\d+),\s*(\d+)\\)/g)]
     .map(match=>[match[1],Number(match[2]),Number(match[3])]);
   for(const [index,language] of ['en','ar'].entries()){
     assert.deepEqual(extract(languageBlocks[index+1]),TILE_SETS[language].tiles,
