@@ -112,7 +112,7 @@ test('cloud tile exchange is server-authoritative and updates only the caller pr
   const end=schema.indexOf('$$;',fn);
   assert.ok(fn>=0&&end>fn);
   const body=schema.slice(fn,end);
-  for(const required of ['for update','expected_revision','It is not your turn','is_withdrawn','room_player_private','room_tile_bag','jsonb_array_elements','remaining_tiles','revision',"'type','exchange'"]) assert.ok(body.includes(required),required);
+  for(const required of ['for update','expected_revision','It is not your turn','is_withdrawn','room_player_private','room_tile_bag','jsonb_array_elements','remaining_tiles','revision','order by random()',"'type','exchange'"]) assert.ok(body.includes(required),required);
   assert.ok(body.includes('Choose between 1 and 7 tiles'));
   assert.ok(body.includes('A selected tile is not in your rack'));
   assert.ok(schema.includes('grant execute on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) to authenticated;'));
