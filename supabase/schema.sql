@@ -227,7 +227,12 @@ begin
   alter publication supabase_realtime add table public.room_members;
 exception when duplicate_object then null;
 end $$;
-do $$
+do $
+begin
+  alter publication supabase_realtime add table public.room_player_private;
+exception when duplicate_object then null;
+end $;
+do $
 begin
   alter publication supabase_realtime add table public.rooms;
 exception when duplicate_object then null;
