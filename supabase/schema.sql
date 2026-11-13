@@ -766,7 +766,7 @@ begin
   ) then raise exception 'A selected tile is not in your rack'; end if;
 
   select count(*) into bag_count from public.room_tile_bag where room_id=target_room;
-  if bag_count < selected_count then raise exception 'Not enough tiles remain to exchange'; end if;
+  if bag_count < 7 or bag_count < selected_count then raise exception 'At least seven tiles must remain in the bag to exchange'; end if;
 
   for bag_row in
     select position,tile from public.room_tile_bag
