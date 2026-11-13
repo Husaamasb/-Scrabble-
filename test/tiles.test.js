@@ -93,7 +93,7 @@ test('cloud match initialization creates the tile bag and private racks on the s
 test('pass turn is server-authoritative and accepts no client game-state payload',()=>{
   const schema=readFileSync(new URL('../supabase/schema.sql',import.meta.url),'utf8');
   const fn=schema.lastIndexOf('create or replace function public.pass_scrabble_turn(');
-  const end=schema.indexOf('$exchange$;',fn);
+  const end=schema.indexOf('$;',fn);
   assert.ok(fn>=0&&end>fn);
   const body=schema.slice(fn,end);
   assert.ok(body.includes('for update'));
