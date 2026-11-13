@@ -319,8 +319,18 @@ begin
   if jsonb_typeof(public_state) <> 'object' or jsonb_typeof(private_state) <> 'object' then
     raise exception 'Invalid game state';
   end if;
-  if public_state ?| array['rack','racks','bag','tiles','private_state'] then
-    raise exception 'Hidden tile data must not be included in public state';
+  -- Accept only the visible fields used by the match screen.
+  if exists (
+    select 1 from jsonb_object_keys(public_state) as k
+    where k not in ('phase','board','scores','turn_index','log','remaining_tiles','consecutive_passes','finished')
+  ) then
+    raise exception 'Unsupported public game-state field';
+  end if;
+  if jsonb_typeof(public_state->'board') <> 'array'
+     or jsonb_typeof(public_state->'scores') <> 'object'
+     or jsonb_typeof(private_state->'rack') <> 'array'
+     or jsonb_array_length(private_state->'rack') > 7 then
+    raise exception 'Invalid board, score, or private rack data';
   end if;
 
   select * into target from public.rooms where id=target_room for update;
@@ -335,8 +345,13 @@ begin
   if jsonb_typeof(player_ids) <> 'array' or jsonb_array_length(player_ids)=0 then
     raise exception 'Match player order is missing';
   end if;
-  if player_ids->>turn_index <> auth.uid()::text then
+  if turn_index < 0 or turn_index >= jsonb_array_length(player_ids)
+     or player_ids->>turn_index <> auth.uid()::text then
     raise exception 'It is not your turn';
+  end if;
+  if coalesce((public_state->>'turn_index')::integer,-1)
+     <> mod(turn_index + 1, jsonb_array_length(player_ids)) then
+    raise exception 'Turn must pass to the next player';
   end if;
 
   next_state := public_state
