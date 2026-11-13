@@ -272,7 +272,8 @@ alter table public.rooms drop column if exists premium_layout;
 
 
 -- Private per-player state: never put racks or hidden tiles in rooms.game_state.
--- A room member can read and write only their own private row.
+-- Players may read only their own private row. Direct writes stay disabled until
+-- a trusted server-side turn pipeline validates rack contents and tile ownership.
 create table if not exists public.room_player_private (
   room_id uuid not null references public.rooms(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -287,16 +288,9 @@ create policy "players read only their private room state"
   on public.room_player_private for select to authenticated
   using(user_id=auth.uid() and public.is_scrabble_room_member(room_id));
 drop policy if exists "players insert only their private room state" on public.room_player_private;
-create policy "players insert only their private room state"
-  on public.room_player_private for insert to authenticated
-  with check(user_id=auth.uid() and public.is_scrabble_room_member(room_id));
 drop policy if exists "players update only their private room state" on public.room_player_private;
-create policy "players update only their private room state"
-  on public.room_player_private for update to authenticated
-  using(user_id=auth.uid() and public.is_scrabble_room_member(room_id))
-  with check(user_id=auth.uid() and public.is_scrabble_room_member(room_id));
-grant select, insert, update on public.room_player_private to authenticated;
-
+revoke all on public.room_player_private from anon, authenticated;
+grant select on public.room_player_private to authenticated;
 
 -- Atomically publish the visible match state and save only the caller's private rack.
 -- The client must omit all hidden tile data from public_state.
