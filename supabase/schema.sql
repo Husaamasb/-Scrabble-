@@ -321,14 +321,14 @@ begin
   end if;
   -- Accept only the visible fields used by the match screen.
   if exists (
-    select 1 from jsonb_object_keys(public_state) as k
-    where k not in ('phase','board','scores','turn_index','log','remaining_tiles','consecutive_passes','finished')
+    select 1 from jsonb_object_keys(public_state) as fields(field_name)
+    where field_name not in ('phase','board','scores','turn_index','log','remaining_tiles','consecutive_passes','finished')
   ) then
     raise exception 'Unsupported public game-state field';
   end if;
-  if jsonb_typeof(public_state->'board') <> 'array'
-     or jsonb_typeof(public_state->'scores') <> 'object'
-     or jsonb_typeof(private_state->'rack') <> 'array'
+  if jsonb_typeof(public_state->'board') is distinct from 'array'
+     or jsonb_typeof(public_state->'scores') is distinct from 'object'
+     or jsonb_typeof(private_state->'rack') is distinct from 'array'
      or jsonb_array_length(private_state->'rack') > 7 then
     raise exception 'Invalid board, score, or private rack data';
   end if;
