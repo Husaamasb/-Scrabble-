@@ -119,3 +119,9 @@ test('cloud tile exchange is server-authoritative and updates only the caller pr
   assert.ok(schema.includes('revoke all on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) from public, anon;'));
 });
 
+
+test('cloud rack selection is disabled outside the current player turn',()=>{
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("activeRoom.game_state?.player_ids?.[Number(activeRoom.game_state?.turn_index)]!==user.id"));
+  assert.ok(cloud.includes("useEffect(()=>{setSelectedExchangeTiles([]);},[activeRoom?.id,activeRoom?.status,activeRoom?.game_state?.revision]);"));
+});
