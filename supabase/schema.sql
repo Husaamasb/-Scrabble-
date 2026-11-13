@@ -406,3 +406,33 @@ begin
 end;
 $$;
 grant execute on function public.finish_scrabble_room(uuid) to authenticated;
+
+
+-- A player may withdraw from an active room without ending the match.
+alter table public.room_members
+  add column if not exists is_withdrawn boolean not null default false;
+
+create or replace function public.withdraw_scrabble_room(target_room uuid)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare target public.rooms;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  select * into target from public.rooms where id=target_room for update;
+  if not found then raise exception 'Room not found'; end if;
+  if target.status <> 'playing' then raise exception 'Match is not active'; end if;
+  if not exists (
+    select 1 from public.room_members
+    where room_id=target_room and user_id=auth.uid()
+  ) then raise exception 'Room membership required'; end if;
+  update public.room_members
+    set is_withdrawn=true, is_ready=false
+    where room_id=target_room and user_id=auth.uid();
+  return target;
+end;
+$$;
+revoke all on function public.withdraw_scrabble_room(uuid) from public, anon;
+grant execute on function public.withdraw_scrabble_room(uuid) to authenticated;
