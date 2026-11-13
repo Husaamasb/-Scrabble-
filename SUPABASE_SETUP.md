@@ -104,3 +104,16 @@ The server now resolves the starting draw during `start_scrabble_room`: it compa
 The cloud match now supports passing a turn through `pass_scrabble_turn`. The RPC locks the room row, checks the active match, membership, withdrawal status, turn owner, and expected revision, then advances to the next non-withdrawn player and records the pass in the public log. It does not accept client-supplied board, score, rack, or bag data. The browser displays the pass button only for the current player. Run the complete `supabase/schema.sql` in Supabase SQL Editor to install this RPC.
 
 Tile placement, dictionary validation, scoring, rack refill, exchanges, and endgame settlement remain disabled until their own authoritative server-side implementation and tests are complete.
+
+
+## Server-authoritative tile exchange
+
+Players can exchange 1–7 selected tiles during their turn through
+`exchange_scrabble_tiles`. The RPC locks the room and the caller's private
+rack, verifies the revision, turn owner, membership, withdrawal status, and
+that every unique selected tile belongs to that rack. It draws the same number
+of replacements from the server-owned bag, returns the selected tiles to that
+bag, updates only the caller's private rack, advances the turn, and records a
+public exchange count without exposing tile identities. The browser has no
+direct write permission to either private table. Re-run the complete
+`supabase/schema.sql` in Supabase SQL Editor to install this RPC.
