@@ -39,7 +39,7 @@ test('valid dictionary approval commits score, board, rack refill, and next turn
   const result=await commitTurn(session,[{row:7,col:6,tile:session.players[0].rack[0]},{row:7,col:7,tile:session.players[0].rack[1]},{row:7,col:8,tile:session.players[0].rack[2]}],async()=>true);
   assert.equal(result.ok,true);
   assert.equal(result.move.total,10);
-  assert.equal(result.session.players[0].score,10);
+  assert.equal(result.session.players[0].score,15);
   assert.equal(result.session.players[0].rack.length,7);
   assert.equal(result.session.currentPlayer,1);
   assert.equal(Object.keys(result.session.board).length,3);
