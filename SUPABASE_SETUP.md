@@ -97,3 +97,10 @@ Direct client `INSERT` and `UPDATE` on `room_player_private` are intentionally d
 The latest schema overrides `start_scrabble_room` to build a shuffled server-owned tile bag using the language-specific distribution. It deals one private starting-draw tile and seven rack tiles per player. The Arabic set matches the user's latest table and totals 110 tiles, including separate entries for `ئ أول الكلمة` (10 points, 2 tiles) and `ئ` (8 points, 1 tile), plus `ى` (3 points, 1 tile) and two jokers. The bag table has RLS enabled and no client privileges; each player can select only their own `room_player_private` row. The cloud screen displays only the signed-in player's rack and refreshes it from realtime row updates.
 
 The server now resolves the starting draw during `start_scrabble_room`: it compares the closest tile to A/alif, redraws only tied players, and stores the public draw history and starter ID. This is still an initialization step, not a complete online game. Private rack refresh after moves, server-authoritative move validation/scoring/dictionary checks, bag draws/exchanges/passes, automatic endgame settlement, and full end-to-end multiplayer tests remain outstanding. Do not enable `submit_scrabble_turn` or client write access to private racks until those checks are implemented.
+
+
+## Server-authoritative pass turn
+
+The cloud match now supports passing a turn through `pass_scrabble_turn`. The RPC locks the room row, checks the active match, membership, withdrawal status, turn owner, and expected revision, then advances to the next non-withdrawn player and records the pass in the public log. It does not accept client-supplied board, score, rack, or bag data. The browser displays the pass button only for the current player. Run the complete `supabase/schema.sql` in Supabase SQL Editor to install this RPC.
+
+Tile placement, dictionary validation, scoring, rack refill, exchanges, and endgame settlement remain disabled until their own authoritative server-side implementation and tests are complete.
