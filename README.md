@@ -33,6 +33,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest and service-worker shell cache.
 - Supabase integration foundation: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
+- Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated pass and tile-exchange actions. The cloud board remains read-only until authoritative word validation, placement, scoring, and rack refill are implemented.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
 
 ## Not yet a complete release
