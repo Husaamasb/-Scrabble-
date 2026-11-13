@@ -2,7 +2,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { TILE_SETS, tileSetReport, createTileBag, drawTiles, exchangeTiles, settleEndgame } from '../src/game/tiles.js';
-import { readFileSync } from 'node:fs';
+
 
 test('English tile set matches the specified 100 tiles',()=>{
   assert.equal(tileSetReport('en').actualTotal,100);
