@@ -477,7 +477,9 @@ begin
   delete from public.room_tile_bag where room_id=target_room;
   delete from public.room_player_private where room_id=target_room;
 
-  if target.language='en' then
+  if target.language='ar' then
+    raise exception 'Arabic tile distribution currently totals 112, but the approved set is 110. Reconcile the supplied distribution before starting an Arabic cloud match.';
+  elsif target.language='en' then
     insert into public.room_tile_bag(room_id,position,tile)
     select target_room, row_number() over(order by random())::integer,
       jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
