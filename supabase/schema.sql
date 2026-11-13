@@ -378,3 +378,31 @@ $$;
 -- Keep turn submission disabled until server-side tile-bag, rack ownership,
 -- move validation, dictionary validation, and score calculation are implemented.
 revoke execute on function public.submit_scrabble_turn(uuid,integer,jsonb,jsonb) from public, anon, authenticated;
+
+
+-- Host can finish an active match. Scores are revealed by the client only
+-- after the room status changes to finished.
+create or replace function public.finish_scrabble_room(target_room uuid)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare target public.rooms;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  select * into target from public.rooms where id=target_room for update;
+  if not found then raise exception 'Room not found'; end if;
+  if target.host_id <> auth.uid() then raise exception 'Only the host can finish the match'; end if;
+  if target.status <> 'playing' then raise exception 'Match is not active'; end if;
+  update public.rooms
+    set status='finished',
+        game_state=coalesce(game_state,'{}'::jsonb)
+          || jsonb_build_object('finished',true,'finish_reason','host'),
+        updated_at=now()
+    where id=target_room
+    returning * into target;
+  return target;
+end;
+$$;
+grant execute on function public.finish_scrabble_room(uuid) to authenticated;
