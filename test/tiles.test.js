@@ -109,7 +109,7 @@ test('pass turn is server-authoritative and accepts no client game-state payload
 test('cloud tile exchange is server-authoritative and updates only the caller private rack',()=>{
   const schema=readFileSync(new URL('../supabase/schema.sql',import.meta.url),'utf8');
   const fn=schema.lastIndexOf('create or replace function public.exchange_scrabble_tiles(');
-  const end=schema.indexOf('$$;',fn);
+  const end=schema.indexOf('$exchange$;',fn);
   assert.ok(fn>=0&&end>fn);
   const body=schema.slice(fn,end);
   for(const required of ['for update','expected_revision','It is not your turn','is_withdrawn','room_player_private','room_tile_bag','jsonb_array_elements','remaining_tiles','revision','order by random()',"'type','exchange'"]) assert.ok(body.includes(required),required);
