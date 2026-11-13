@@ -50,3 +50,11 @@ The app includes a separate playable local match screen for same-device multipla
 Dictionary data is retrieved from Wiktionary's public MediaWiki API. New words require an internet connection; previously confirmed exact entries are cached on the device. This adapter checks dictionary entry existence and does not generate or suggest words.
 
 The repository is still under active development and must not be treated as a finished release.
+
+
+## Languages
+
+The interface supports two separate language modes: Arabic uses natural Saudi
+colloquial wording, while English uses natural English copy. Switching the
+language updates the app interface direction (RTL for Arabic, LTR for English).
+Arabic and English game sections use their own tile sets and dictionary checks.
