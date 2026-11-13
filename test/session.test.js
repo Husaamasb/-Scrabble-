@@ -100,6 +100,7 @@ test('new sessions deal seven tiles to each player and preserve the correct bag 
 test('first player is selected by the tile closest to alif/A, ties require redraw',()=>{
   assert.deepEqual(chooseStartingPlayer(['C','A','B'],'en'),{tie:false,playerIndex:1});
   assert.deepEqual(chooseStartingPlayer(['ب','ا','ت'],'ar'),{tie:false,playerIndex:1});
+  assert.deepEqual(chooseStartingPlayer(['ئ','ت'],'ar'),{tie:false,playerIndex:0});
   assert.deepEqual(chooseStartingPlayer(['A','A'],'en'),{tie:true,playerIndices:[0,1]});
 });
 
