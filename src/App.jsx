@@ -14,6 +14,7 @@ function premiumAt(i){ return i===112 ? 'START' : (PREMIUM[i] || ''); }
 function makeTileState(lang){const bag=createTileBag(lang);const draw=drawTiles(bag,7);return {rack:draw.drawn.map((tile,i)=>({...tile,id:globalThis.crypto?.randomUUID?.()||String(Date.now()+i)})),bag:draw.remaining};}
 export default function App(){
   const [savedAtStart]=useState(loadActiveGame);
+  useEffect(()=>{if(typeof document!=='undefined'){document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';}},[lang]);
   const [localMode,setLocalMode]=useState(false);
   const [botMode,setBotMode]=useState(false);
   const [lang,setLang]=useState(()=>savedAtStart?.lang||'ar'); const t=COPY[lang];
