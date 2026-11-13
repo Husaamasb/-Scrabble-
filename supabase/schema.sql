@@ -690,3 +690,103 @@ begin
 end;
 $$;
 grant execute on function public.start_scrabble_room(uuid) to authenticated;
+ 
+-- A pass is a server-authoritative action: it never accepts client board,
+-- score, rack, or tile-bag data.
+create or replace function public.pass_scrabble_turn(
+  target_room uuid,
+  expected_revision integer
+)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target public.rooms;
+  player_ids jsonb;
+  current_index integer;
+  next_index integer;
+  player_count integer;
+  step integer;
+  next_user uuid;
+  pass_count integer;
+  next_log jsonb;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+
+  select * into target
+  from public.rooms
+  where id=target_room
+  for update;
+
+  if not found or target.status <> 'playing' then
+    raise exception 'Match is not active';
+  end if;
+  if not public.is_scrabble_room_member(target_room) then
+    raise exception 'Room membership required';
+  end if;
+  if exists(
+    select 1 from public.room_members
+    where room_id=target_room and user_id=auth.uid() and is_withdrawn
+  ) then
+    raise exception 'Withdrawn players cannot take turns';
+  end if;
+
+  if coalesce((target.game_state->>'revision')::integer,0) <> expected_revision then
+    raise exception 'Game state changed; refresh and try again';
+  end if;
+
+  player_ids := target.game_state->'player_ids';
+  player_count := coalesce(jsonb_array_length(player_ids),0);
+  current_index := coalesce((target.game_state->>'turn_index')::integer,-1);
+
+  if player_count < 2 or current_index < 0 or current_index >= player_count then
+    raise exception 'Match player order is invalid';
+  end if;
+  if player_ids->>current_index <> auth.uid()::text then
+    raise exception 'It is not your turn';
+  end if;
+
+  next_index := -1;
+  next_user := null;
+  for step in 1..player_count loop
+    next_index := mod(current_index + step, player_count);
+    next_user := (player_ids->>next_index)::uuid;
+    if exists(
+      select 1 from public.room_members
+      where room_id=target_room and user_id=next_user and not is_withdrawn
+    ) then
+      exit;
+    end if;
+    next_user := null;
+  end loop;
+  if next_user is null then
+    raise exception 'No active players remain';
+  end if;
+
+  pass_count := coalesce((target.game_state->>'consecutive_passes')::integer,0)+1;
+  next_log := coalesce(target.game_state->'log','[]'::jsonb)
+    || jsonb_build_array(jsonb_build_object(
+      'type','pass',
+      'user_id',auth.uid(),
+      'at',now()
+    ));
+
+  update public.rooms
+  set game_state=target.game_state || jsonb_build_object(
+        'turn_index',next_index,
+        'consecutive_passes',pass_count,
+        'log',next_log,
+        'revision',expected_revision+1
+      ),
+      updated_at=now()
+  where id=target_room
+  returning * into target;
+
+  return target;
+end;
+$$;
+
+revoke all on function public.pass_scrabble_turn(uuid,integer) from public, anon;
+grant execute on function public.pass_scrabble_turn(uuid,integer) to authenticated;
