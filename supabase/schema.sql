@@ -176,8 +176,9 @@ create policy "friendships visible to participants" on public.friendships for se
 
 drop policy if exists "rooms visible to members or public waiting rooms" on public.rooms;
 create policy "rooms visible to members or public waiting rooms" on public.rooms for select to authenticated using(is_public and status='waiting' or public.is_scrabble_room_member(id));
+-- Room state is changed only through narrowly scoped SECURITY DEFINER RPCs.
+-- Clients must not directly update rooms.game_state or other room columns.
 drop policy if exists "host updates room" on public.rooms;
-create policy "host updates room" on public.rooms for update to authenticated using(host_id=auth.uid()) with check(host_id=auth.uid());
 
 drop policy if exists "members see room members" on public.room_members;
 create policy "members see room members" on public.room_members for select to authenticated using(public.is_scrabble_room_member(room_id));
@@ -374,4 +375,6 @@ begin
 end;
 $$;
 
-grant execute on function public.submit_scrabble_turn(uuid,integer,jsonb,jsonb) to authenticated;
+-- Keep turn submission disabled until server-side tile-bag, rack ownership,
+-- move validation, dictionary validation, and score calculation are implemented.
+revoke execute on function public.submit_scrabble_turn(uuid,integer,jsonb,jsonb) from public, anon, authenticated;
