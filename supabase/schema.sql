@@ -760,8 +760,8 @@ begin
   if exists(
     select 1 from unnest(tile_ids) as chosen(id)
     where not exists(
-      select 1 from jsonb_array_elements(rack_json) as rack_tile
-      where rack_tile->>'id'=chosen.id::text
+      select 1 from jsonb_array_elements(rack_json) as rack(rack_tile)
+      where rack.rack_tile->>'id'=chosen.id::text
     )
   ) then raise exception 'A selected tile is not in your rack'; end if;
 
