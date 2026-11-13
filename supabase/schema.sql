@@ -477,9 +477,7 @@ begin
   delete from public.room_tile_bag where room_id=target_room;
   delete from public.room_player_private where room_id=target_room;
 
-  if target.language='ar' then
-    raise exception 'Arabic tile distribution currently totals 112, but the approved set is 110. Reconcile the supplied distribution before starting an Arabic cloud match.';
-  elsif target.language='en' then
+  if target.language='en' then
     insert into public.room_tile_bag(room_id,position,tile)
     select target_room, row_number() over(order by random())::integer,
       jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
@@ -491,7 +489,7 @@ begin
       ('Y',4,2),('Z',10,1),('★',0,2)
     ) as v(letter,points,quantity)
     cross join lateral generate_series(1,v.quantity);
-  else
+  elsif target.language='ar' then
     insert into public.room_tile_bag(room_id,position,tile)
     select target_room, row_number() over(order by random())::integer,
       jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
@@ -503,9 +501,11 @@ begin
       ('ي',1,3),('ء',8,1),('ئ أول الكلمة',10,2),('★',0,2),('ت',1,4),
       ('ة',5,1),('ث',1,3),('ر',1,3),('ز',2,3),('س',1,3),('ع',2,3),
       ('غ',4,3),('ف',1,3),('لأ',3,1),('لآ',3,1),('م',1,4),('يء',5,1),
-      ('ى',3,1),('ئ شكل آخر',8,1)
+      ('ى',3,1),('ئ',8,1)
     ) as v(letter,points,quantity)
     cross join lateral generate_series(1,v.quantity);
+  else
+    raise exception 'Unsupported room language';
   end if;
 
   select jsonb_agg(user_id order by seat),
