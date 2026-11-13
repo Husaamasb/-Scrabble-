@@ -86,12 +86,12 @@ export default function LocalTable({ language, onExit, botMode=false }) {
       const result=await commitTurn(session,pending,createWiktionaryValidator());
       if(!result.ok){setMessage(ar?'ما قبلنا الحركة: '+result.reason:'Move rejected: '+result.reason);return;}
       setSession(result.session);setPending([]);setSelected(null);setExchange([]);
-      setMessage(ar?'تم قبول الحركة وإضافة '+result.move.total+' نقطة.':'Move accepted: '+result.move.total+' points.');
+      setMessage(ar?'قبلنا حركتك وانضافت '+result.move.total+' نقطة.':'Move accepted: '+result.move.total+' points.');
     }catch{setMessage(ar?'ما قدرنا نتصل بالقاموس.':'Dictionary connection failed.');}
     finally{setBusy(false);}
   };
   const doPass=()=>{if(pending.length){setMessage(ar?'رجّع القطع اللي حطيتها أول.':'Undo placed tiles first.');return;}const result=passTurn(session);setSession(result.session);setMessage(result.session.status==='finished'?(ar?'خلصت المباراة.':'Match finished.'):(ar?'عدّيت دورك.':'Turn passed.'));};
-  const doExchange=()=>{if(pending.length||!exchange.length){setMessage(ar?'حدد القطع اللي تبي تبدّلها بعد ما تلغي الحركة الحالية.':'Select tiles to exchange after clearing the current move.');return;}const result=exchangeFromRack(session,exchange);if(!result.ok){setMessage(ar?'ما قدرنا نبدّل القطع: '+result.reason:'Exchange failed: '+result.reason);return;}setSession(result.session);setExchange([]);setMessage(ar?'بدّلت القطع وخلص دورك.':'Tiles exchanged; your turn is over.');};
+  const doExchange=()=>{if(pending.length||!exchange.length){setMessage(ar?'حدد القطع اللي تبي تبدّلها بعد ما تلغي حركتك.':'Select tiles to exchange after clearing the current move.');return;}const result=exchangeFromRack(session,exchange);if(!result.ok){setMessage(ar?'ما قدرنا نبدّل القطع: '+result.reason:'Exchange failed: '+result.reason);return;}setSession(result.session);setExchange([]);setMessage(ar?'بدّلت القطع وخلص دورك.':'Tiles exchanged; your turn is over.');};
   return <main className="local-table" dir={ar?'rtl':'ltr'}>
     <header className="local-header"><div><small>{botMode?(ar?'مباراة ضد الكمبيوتر':'VS BOT'):(ar?'مباراة على نفس الجهاز':'LOCAL MATCH')}</small><h2>{session.status==='finished'?(ar?'خلصت المباراة':'Match finished'):(ar?'دور':'Turn')+' — '+player.name}</h2></div><button onClick={onExit}>{ar?'اطلع':'Exit'}</button></header>
     <div className="local-scores">{session.players.map((p,i)=><div className={i===session.currentPlayer?'current':''} key={p.id}><span>{p.name}</span><b>{p.score}</b><small>{ar?'قطع':'Tiles'}: {p.rack.length}</small></div>)}</div>
