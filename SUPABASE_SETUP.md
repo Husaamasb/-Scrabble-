@@ -22,7 +22,7 @@ Password recovery uses Supabase's secure recovery email link.
 
 In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
 
-## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row. Direct client insert/update access is revoked until trusted server-side turn validation is implemented; hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is a security foundation only; live online turns and rack synchronization are still being implemented.
+## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row. Direct client insert/update access is revoked; trusted RPCs alone initialize and modify private racks. Hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is a security foundation only; live online turns and rack synchronization are still being implemented.
 
 5. Add the public project settings to GitHub Pages
 
@@ -89,14 +89,14 @@ updating to install the withdrawal column and RPC.
 
 ## Private rack write protection
 
-Direct client `INSERT` and `UPDATE` on `room_player_private` are intentionally disabled. Re-enable writes only through a trusted server-side turn pipeline that validates rack ownership, tile draws, move legality, dictionary results, and scoring. Never accept client-submitted racks or scores as authoritative.
+Direct client `INSERT` and `UPDATE` on `room_player_private` are intentionally disabled. The server-side start and exchange RPCs can update private racks without granting browser write access. Future move RPCs must validate rack ownership, tile draws, move legality, dictionary results, and scoring. Never accept client-submitted racks or scores as authoritative.
 
 
 ## Server-side cloud tile dealing (new)
 
 The latest schema overrides `start_scrabble_room` to build a shuffled server-owned tile bag using the language-specific distribution. It deals one private starting-draw tile and seven rack tiles per player. The Arabic set matches the user's latest table and totals 110 tiles, including separate entries for `ئ أول الكلمة` (10 points, 2 tiles) and `ئ` (8 points, 1 tile), plus `ى` (3 points, 1 tile) and two jokers. The bag table has RLS enabled and no client privileges; each player can select only their own `room_player_private` row. The cloud screen displays only the signed-in player's rack and refreshes it from realtime row updates.
 
-The server now resolves the starting draw during `start_scrabble_room`: it compares the closest tile to A/alif, redraws only tied players, and stores the public draw history and starter ID. This is still an initialization step, not a complete online game. Private rack refresh after moves, server-authoritative move validation/scoring/dictionary checks, bag draws/exchanges/passes, automatic endgame settlement, and full end-to-end multiplayer tests remain outstanding. Do not enable `submit_scrabble_turn` or client write access to private racks until those checks are implemented.
+The server now resolves the starting draw during `start_scrabble_room`: it compares the closest tile to A/alif, redraws only tied players, and stores the public draw history and starter ID. This is still an initialization step, not a complete online game. Server-authoritative tile placement, word/dictionary validation, scoring, rack refill after a valid word, automatic endgame settlement, and full end-to-end multiplayer tests remain outstanding. Passing and exchanging tiles now have dedicated server-authoritative RPCs. Do not enable `submit_scrabble_turn` or client write access to private racks until those checks are implemented.
 
 
 ## Server-authoritative pass turn
