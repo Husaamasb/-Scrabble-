@@ -691,6 +691,147 @@ end;
 $$;
 grant execute on function public.start_scrabble_room(uuid) to authenticated;
  
+
+-- Exchange tiles only through the trusted server; rack and bag never reach client writes.
+create or replace function public.exchange_scrabble_tiles(
+  target_room uuid,
+  expected_revision integer,
+  tile_ids uuid[]
+)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  target public.rooms;
+  private_row public.room_player_private;
+  rack_json jsonb;
+  kept_rack jsonb;
+  drawn_tiles jsonb := '[]'::jsonb;
+  new_rack jsonb;
+  selected_tile jsonb;
+  selected_count integer;
+  unique_count integer;
+  bag_count integer;
+  player_ids jsonb;
+  player_count integer;
+  current_index integer;
+  next_index integer := -1;
+  next_user uuid;
+  step integer;
+  pass_count integer;
+  next_log jsonb;
+  bag_position integer;
+  bag_row record;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  if tile_ids is null or cardinality(tile_ids) < 1 or cardinality(tile_ids) > 7 then
+    raise exception 'Choose between 1 and 7 tiles';
+  end if;
+  selected_count := cardinality(tile_ids);
+  select count(distinct selected_id) into unique_count
+    from unnest(tile_ids) as selected(selected_id);
+  if unique_count <> selected_count then raise exception 'Duplicate tile selection'; end if;
+
+  select * into target from public.rooms where id=target_room for update;
+  if not found or target.status <> 'playing' then raise exception 'Match is not active'; end if;
+  if not public.is_scrabble_room_member(target_room) then raise exception 'Room membership required'; end if;
+  if exists(select 1 from public.room_members where room_id=target_room and user_id=auth.uid() and is_withdrawn) then
+    raise exception 'Withdrawn players cannot take turns';
+  end if;
+  if coalesce((target.game_state->>'revision')::integer,0) <> expected_revision then
+    raise exception 'Game state changed; refresh and try again';
+  end if;
+
+  player_ids := target.game_state->'player_ids';
+  player_count := coalesce(jsonb_array_length(player_ids),0);
+  current_index := coalesce((target.game_state->>'turn_index')::integer,-1);
+  if player_count < 2 or current_index < 0 or current_index >= player_count
+     or player_ids->>current_index <> auth.uid()::text then
+    raise exception 'It is not your turn';
+  end if;
+
+  select * into private_row from public.room_player_private
+    where room_id=target_room and user_id=auth.uid() for update;
+  if not found then raise exception 'Your private rack was not found'; end if;
+  rack_json := private_row.private_state->'rack';
+  if jsonb_typeof(rack_json) is distinct from 'array' then raise exception 'Your rack is invalid'; end if;
+  if exists(
+    select 1 from unnest(tile_ids) as chosen(id)
+    where not exists(
+      select 1 from jsonb_array_elements(rack_json) as rack_tile
+      where rack_tile->>'id'=chosen.id::text
+    )
+  ) then raise exception 'A selected tile is not in your rack'; end if;
+
+  select count(*) into bag_count from public.room_tile_bag where room_id=target_room;
+  if bag_count < selected_count then raise exception 'Not enough tiles remain to exchange'; end if;
+
+  for bag_row in
+    select position,tile from public.room_tile_bag
+    where room_id=target_room order by position limit selected_count for update
+  loop
+    drawn_tiles := drawn_tiles || jsonb_build_array(bag_row.tile);
+    delete from public.room_tile_bag where room_id=target_room and position=bag_row.position;
+  end loop;
+  if jsonb_array_length(drawn_tiles) <> selected_count then raise exception 'Could not draw replacement tiles'; end if;
+
+  select coalesce(jsonb_agg(rack_tile order by ordinal), '[]'::jsonb)
+    into kept_rack
+    from jsonb_array_elements(rack_json) with ordinality as rack(rack_tile,ordinal)
+    where not ((rack_tile->>'id') = any(select unnest(tile_ids)::text));
+  new_rack := kept_rack || drawn_tiles;
+
+  select coalesce(max(position),0) into bag_position
+    from public.room_tile_bag where room_id=target_room;
+  for selected_tile in
+    select rack_tile
+    from jsonb_array_elements(rack_json) with ordinality as rack(rack_tile,ordinal)
+    where (rack_tile->>'id') = any(select unnest(tile_ids)::text)
+    order by ordinal
+  loop
+    bag_position := bag_position+1;
+    insert into public.room_tile_bag(room_id,position,tile)
+      values(target_room,bag_position,selected_tile);
+  end loop;
+
+  update public.room_player_private
+    set private_state=private_row.private_state || jsonb_build_object('rack',new_rack),
+        updated_at=now()
+    where room_id=target_room and user_id=auth.uid();
+
+  for step in 1..player_count loop
+    next_index := mod(current_index+step,player_count);
+    next_user := (player_ids->>next_index)::uuid;
+    if exists(select 1 from public.room_members where room_id=target_room and user_id=next_user and not is_withdrawn) then
+      exit;
+    end if;
+    next_user := null;
+  end loop;
+  if next_user is null then raise exception 'No active players remain'; end if;
+
+  pass_count := coalesce((target.game_state->>'consecutive_passes')::integer,0)+1;
+  next_log := coalesce(target.game_state->'log','[]'::jsonb)
+    || jsonb_build_array(jsonb_build_object('type','exchange','user_id',auth.uid(),'count',selected_count,'at',now()));
+
+  update public.rooms
+    set game_state=target.game_state || jsonb_build_object(
+      'turn_index',next_index,
+      'consecutive_passes',pass_count,
+      'remaining_tiles',(select count(*) from public.room_tile_bag where room_id=target_room),
+      'log',next_log,
+      'revision',expected_revision+1
+    ),
+    updated_at=now()
+    where id=target_room returning * into target;
+  return target;
+end;
+$;
+revoke all on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) from public, anon;
+grant execute on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) to authenticated;
+
+
 -- A pass is a server-authoritative action: it never accepts client board,
 -- score, rack, or tile-bag data.
 create or replace function public.pass_scrabble_turn(
