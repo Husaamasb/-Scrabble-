@@ -796,6 +796,19 @@ begin
       values(target_room,bag_position,selected_tile);
   end loop;
 
+  -- Return exchanged tiles to the bag, then shuffle the whole remaining bag.
+  update public.room_tile_bag
+    set position=position+bag_position+1000
+    where room_id=target_room;
+  with randomized as (
+    select position,row_number() over(order by random())::integer as new_position
+    from public.room_tile_bag where room_id=target_room
+  )
+  update public.room_tile_bag b
+    set position=randomized.new_position
+    from randomized
+    where b.room_id=target_room and b.position=randomized.position;
+
   update public.room_player_private
     set private_state=private_row.private_state || jsonb_build_object('rack',new_rack),
         updated_at=now()
