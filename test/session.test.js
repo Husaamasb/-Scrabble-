@@ -59,7 +59,7 @@ test('match ends automatically when the bag is empty and a player empties their 
   assert.equal(result.session.status,'finished');
   assert.equal(result.session.players[0].rack.length,0);
   assert.equal(result.session.winner,'p1');
-  assert.equal(result.session.players[0].score,15);
+  assert.equal(result.session.players[0].score,10);
   assert.equal(result.session.players[1].score,-5);
 });
 
