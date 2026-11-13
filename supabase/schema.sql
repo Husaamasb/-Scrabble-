@@ -431,3 +431,121 @@ end;
 $$;
 revoke all on function public.withdraw_scrabble_room(uuid) from public, anon;
 grant execute on function public.withdraw_scrabble_room(uuid) to authenticated;
+
+
+-- Server-owned tile bag. No client role receives table privileges or an RLS policy.
+create table if not exists public.room_tile_bag (
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  position integer not null,
+  tile jsonb not null,
+  primary key(room_id,position)
+);
+alter table public.room_tile_bag enable row level security;
+revoke all on public.room_tile_bag from public, anon, authenticated;
+
+-- Deal starting-draw tiles and seven-tile racks inside the database transaction.
+-- Hidden tiles are written only to the player's own private row; the bag stays server-only.
+create or replace function public.start_scrabble_room(target_room uuid)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target public.rooms;
+  member_count integer;
+  ready_count integer;
+  player record;
+  rack_json jsonb;
+  start_json jsonb;
+  players_json jsonb;
+  scores_json jsonb;
+  dealt_count integer;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  select * into target from public.rooms where id=target_room for update;
+  if not found then raise exception 'Room not found'; end if;
+  if target.host_id <> auth.uid() then raise exception 'Only the host can start the match'; end if;
+  if target.status <> 'waiting' then raise exception 'Room has already started'; end if;
+
+  select count(*), count(*) filter (where is_ready or user_id=auth.uid())
+    into member_count, ready_count
+    from public.room_members where room_id=target_room;
+  if member_count < 2 then raise exception 'At least two players are required'; end if;
+  if member_count <> ready_count then raise exception 'All players must be ready'; end if;
+
+  delete from public.room_tile_bag where room_id=target_room;
+  delete from public.room_player_private where room_id=target_room;
+
+  if target.language='en' then
+    insert into public.room_tile_bag(room_id,position,tile)
+    select target_room, row_number() over(order by random())::integer,
+      jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
+    from (values
+      ('A',1,9),('B',3,2),('C',3,2),('D',2,4),('E',1,12),('F',4,2),
+      ('G',2,3),('H',4,2),('I',1,9),('J',8,1),('K',5,1),('L',1,4),
+      ('M',3,2),('N',1,6),('O',1,8),('P',3,2),('Q',10,1),('R',1,6),
+      ('S',1,4),('T',1,6),('U',1,4),('V',4,2),('W',4,2),('X',8,1),
+      ('Y',4,2),('Z',10,1),('★',0,2)
+    ) as v(letter,points,quantity)
+    cross join lateral generate_series(1,v.quantity);
+  else
+    insert into public.room_tile_bag(room_id,position,tile)
+    select target_room, row_number() over(order by random())::integer,
+      jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
+    from (values
+      ('ا',1,8),('إ',1,2),('أ',1,2),('آ',8,1),('ب',1,4),('ج',1,3),
+      ('ح',1,3),('خ',1,3),('د',1,3),('ذ',1,3),('ش',2,3),('ص',2,3),
+      ('ض',3,3),('ط',2,2),('ظ',4,2),('ق',2,3),('ك',3,3),('ل',1,3),
+      ('لا',2,2),('لإ',3,1),('ن',1,3),('ه',1,3),('و',1,3),('ؤ',10,1),
+      ('ي',1,3),('ء',8,1),('ئ أول الكلمة',10,2),('★',0,2),('ت',1,4),
+      ('ة',5,1),('ث',1,3),('ر',1,3),('ز',2,3),('س',1,3),('ع',2,3),
+      ('غ',4,3),('ف',1,3),('لأ',3,1),('لآ',3,1),('م',1,4),('يء',5,1),
+      ('ى',3,1),('ئ شكل آخر',8,1)
+    ) as v(letter,points,quantity)
+    cross join lateral generate_series(1,v.quantity);
+  end if;
+
+  select jsonb_agg(user_id order by seat),
+         jsonb_object_agg(user_id::text,0)
+    into players_json,scores_json
+    from public.room_members where room_id=target_room;
+
+  -- One private starting-draw tile per player, followed by seven private rack tiles.
+  for player in
+    select user_id,seat from public.room_members where room_id=target_room order by seat
+  loop
+    select tile into start_json from public.room_tile_bag
+      where room_id=target_room and position=player.seat;
+    select coalesce(jsonb_agg(tile order by position),'[]'::jsonb) into rack_json
+      from public.room_tile_bag
+      where room_id=target_room
+        and position between member_count+(player.seat-1)*7+1
+                          and member_count+player.seat*7;
+    if start_json is null or jsonb_array_length(rack_json)<>7 then
+      raise exception 'Not enough tiles to initialize every player';
+    end if;
+    insert into public.room_player_private(room_id,user_id,private_state)
+      values(target_room,player.user_id,jsonb_build_object('rack',rack_json,'starting_draw',start_json));
+  end loop;
+
+  dealt_count := member_count*8;
+  delete from public.room_tile_bag where room_id=target_room and position<=dealt_count;
+
+  update public.rooms
+    set status='playing',
+        game_state=jsonb_build_object(
+          'phase','initial_draw',
+          'player_ids',players_json,
+          'board',jsonb_build_array(),
+          'scores',scores_json,
+          'turn_index',0,
+          'remaining_tiles',(select count(*) from public.room_tile_bag where room_id=target_room),
+          'revision',1
+        ),
+        updated_at=now()
+    where id=target_room returning * into target;
+  return target;
+end;
+$$;
+grant execute on function public.start_scrabble_room(uuid) to authenticated;
