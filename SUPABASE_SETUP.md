@@ -22,7 +22,7 @@ Password recovery uses Supabase's secure recovery email link.
 
 In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
 
-## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row. Direct client insert/update access is revoked; trusted RPCs alone initialize and modify private racks. Hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is a security foundation only; live online turns and rack synchronization are still being implemented.
+## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row. Direct client insert/update access is revoked; trusted RPCs alone initialize and modify private racks. Hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is protected from browser writes. Server-side pass and exchange actions are implemented; word placement and synchronized scoring are still being built.
 
 5. Add the public project settings to GitHub Pages
 
@@ -57,7 +57,7 @@ npm run dev
 
 ## Still required for a complete online game
 
-The cloud lobby and chat are not yet a synchronized Scrabble match. Server-side tile distribution and private rack delivery are implemented, and the host start RPC now compares starting tiles, redraws tied players, and selects the first player using the closest tile to A/alif. The browser can read only the signed-in player's private rack and listens for realtime changes to that private row. Direct client writes to `room_player_private` remain revoked. The shared board is still display-only: authoritative move validation/scoring/dictionary checks, rack refill, exchanges, passes, reconnect recovery, automatic endgame settlement, and online result/XP persistence still need implementation and end-to-end testing. Do not trust client-submitted scores as authoritative or treat the project as a finished release.
+The cloud lobby and chat are not yet a synchronized Scrabble match. Server-side tile distribution and private rack delivery are implemented, and the host start RPC now compares starting tiles, redraws tied players, and selects the first player using the closest tile to A/alif. The browser can read only the signed-in player's private rack and listens for realtime changes to that private row. Direct client writes to `room_player_private` remain revoked. The shared board is still display-only: authoritative move placement, dictionary validation, scoring, rack refill after a word, reconnect recovery, automatic endgame settlement, online result/XP persistence, and full end-to-end testing still need implementation. Passing and exchanging tiles now use dedicated server-side RPCs. Do not trust client-submitted scores as authoritative or treat the project as a finished release.
 
 
 ## Ending an online room match
@@ -103,7 +103,7 @@ The server now resolves the starting draw during `start_scrabble_room`: it compa
 
 The cloud match now supports passing a turn through `pass_scrabble_turn`. The RPC locks the room row, checks the active match, membership, withdrawal status, turn owner, and expected revision, then advances to the next non-withdrawn player and records the pass in the public log. It does not accept client-supplied board, score, rack, or bag data. The browser displays the pass button only for the current player. Run the complete `supabase/schema.sql` in Supabase SQL Editor to install this RPC.
 
-Tile placement, dictionary validation, scoring, rack refill, exchanges, and endgame settlement remain disabled until their own authoritative server-side implementation and tests are complete.
+Tile placement, dictionary validation, scoring, rack refill after a word, and endgame settlement remain disabled until their own authoritative server-side implementation and tests are complete. Tile exchanges are now implemented separately through `exchange_scrabble_tiles`.
 
 
 ## Server-authoritative tile exchange
