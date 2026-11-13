@@ -57,7 +57,7 @@ npm run dev
 
 ## Still required for a complete online game
 
-The cloud lobby and chat are not yet the same thing as a synchronized Scrabble match. The backend now has an atomic turn-state RPC with a revision check, verifies that the caller is the current player, stores that caller's private state separately, and rejects hidden rack/bag fields in the public state. The browser helper subscribes to room updates and loads/publishes the caller's private state. This is a synchronization foundation, not a complete playable online match yet: initial server-side tile distribution, full board/rack/turn UI integration, reconnect recovery, authoritative server-side move/scoring/word validation, and online match result/XP persistence still need implementation and end-to-end testing. Do not trust client-submitted scores as authoritative. Do not treat the project as a finished release yet.
+The cloud lobby and chat are not yet the same thing as a synchronized Scrabble match. The schema contains a revision-checked turn RPC, but execution is disabled until it can validate the complete move server-side. The browser currently does not read or write private racks, and direct client writes to `room_player_private` are revoked. This is a security foundation only, not a playable online match: initial server-side tile distribution, private rack delivery, full board/rack/turn UI integration, reconnect recovery, authoritative move/scoring/word validation, and online match result/XP persistence still need implementation and end-to-end testing. Do not trust client-submitted scores as authoritative. Do not treat the project as a finished release yet.
 
 
 ## Ending an online room match
