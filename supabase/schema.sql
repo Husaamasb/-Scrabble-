@@ -702,7 +702,7 @@ returns public.rooms
 language plpgsql
 security definer
 set search_path = public
-as $
+as $exchange$
 declare
   target public.rooms;
   private_row public.room_player_private;
@@ -780,7 +780,7 @@ begin
   select coalesce(jsonb_agg(rack_tile order by ordinal), '[]'::jsonb)
     into kept_rack
     from jsonb_array_elements(rack_json) with ordinality as rack(rack_tile,ordinal)
-    where not ((rack_tile->>'id') = any(select unnest(tile_ids)::text));
+    where not ((rack_tile->>'id') = any(array(select unnest(tile_ids)::text)));
   new_rack := kept_rack || drawn_tiles;
 
   select coalesce(max(position),0) into bag_position
@@ -788,7 +788,7 @@ begin
   for selected_tile in
     select rack_tile
     from jsonb_array_elements(rack_json) with ordinality as rack(rack_tile,ordinal)
-    where (rack_tile->>'id') = any(select unnest(tile_ids)::text)
+    where (rack_tile->>'id') = any(array(select unnest(tile_ids)::text))
     order by ordinal
   loop
     bag_position := bag_position+1;
@@ -827,7 +827,7 @@ begin
     where id=target_room returning * into target;
   return target;
 end;
-$;
+$exchange$;
 revoke all on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) from public, anon;
 grant execute on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) to authenticated;
 
