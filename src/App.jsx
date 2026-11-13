@@ -14,10 +14,10 @@ function premiumAt(i){ return i===112 ? 'START' : (PREMIUM[i] || ''); }
 function makeTileState(lang){const bag=createTileBag(lang);const draw=drawTiles(bag,7);return {rack:draw.drawn.map((tile,i)=>({...tile,id:globalThis.crypto?.randomUUID?.()||String(Date.now()+i)})),bag:draw.remaining};}
 export default function App(){
   const [savedAtStart]=useState(loadActiveGame);
-  useEffect(()=>{if(typeof document!=='undefined'){document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';}},[lang]);
   const [localMode,setLocalMode]=useState(false);
   const [botMode,setBotMode]=useState(false);
   const [lang,setLang]=useState(()=>savedAtStart?.lang||'ar'); const t=COPY[lang];
+  useEffect(()=>{if(typeof document!=='undefined'){document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';}},[lang]);
   const [started,setStarted]=useState(false); const [tileState,setTileState]=useState(()=>savedAtStart?.tileState||makeTileState('ar')); const rack=tileState.rack; const bag=tileState.bag;
   const [board,setBoard]=useState(()=>savedAtStart?.board||{}); const [pending,setPending]=useState(()=>savedAtStart?.pending||[]); const [selected,setSelected]=useState(null); const [score,setScore]=useState(()=>Number(savedAtStart?.score)||0); const [roundLog,setRoundLog]=useState(()=>Array.isArray(savedAtStart?.roundLog)?savedAtStart.roundLog:[]); const [message,setMessage]=useState('');
   const [dark,setDark]=useState(()=>Boolean(savedAtStart?.dark)); const [chestOpen,setChestOpen]=useState(true); const [blankChoice,setBlankChoice]=useState(''); const [dictionaryBusy,setDictionaryBusy]=useState(false);
