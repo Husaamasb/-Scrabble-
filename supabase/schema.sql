@@ -462,7 +462,7 @@ as $$
         when p_letter in ('لا','لأ','لإ','لآ') then 22
         when p_letter = 'ة' then 25
         when p_letter in ('ى','يء') then 27
-        else greatest(strpos('ابتثجحخدذرزسشصضطظعغفقكلمنهوي',p_letter)-1,10000)
+        else case when strpos('ابتثجحخدذرزسشصضطظعغفقكلمنهوي',p_letter)>0 then strpos('ابتثجحخدذرزسشصضطظعغفقكلمنهوي',p_letter)-1 else 10000 end
       end
     else 10000
   end;
@@ -552,16 +552,16 @@ begin
 
   -- Each active player receives one comparison tile and seven private rack tiles.
   for player in
-    select user_id,seat from public.room_members
+    select user_id,seat,row_number() over(order by seat)::integer as deal_index from public.room_members
     where room_id=target_room and not is_withdrawn order by seat
   loop
     select tile into start_json from public.room_tile_bag
-      where room_id=target_room and position=player.seat;
+      where room_id=target_room and position=player.deal_index;
     select coalesce(jsonb_agg(tile order by position),'[]'::jsonb) into rack_json
       from public.room_tile_bag
       where room_id=target_room
-        and position between member_count+(player.seat-1)*7+1
-                          and member_count+player.seat*7;
+        and position between member_count+(player.deal_index-1)*7+1
+                          and member_count+player.deal_index*7;
     if start_json is null or jsonb_array_length(rack_json)<>7 then
       raise exception 'Not enough tiles to initialize every player';
     end if;
