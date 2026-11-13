@@ -116,3 +116,6 @@
 .cloud-confirm-dialog p{line-height:1.7;overflow-wrap:anywhere}
 .cloud-confirm-dialog small{display:block;margin:10px 0 16px;line-height:1.6;color:#8b2929}
 .dark .cloud-confirm-dialog{background:#30251d;color:#f2dfbd;border-color:#72553a}
+
+
+.cloud-private-rack{margin:10px 0;padding:10px;border:1px solid #b99870;border-radius:10px;background:#f7ecd7;color:#493321}.cloud-private-rack>b{display:block;margin-bottom:8px}.cloud-rack-tiles{display:flex;gap:6px;flex-wrap:wrap}.cloud-rack-tile{display:grid;place-items:center;min-width:34px;height:40px;padding:0 6px;border:1px solid #9c7148;border-radius:5px;background:linear-gradient(145deg,#fff0c9,#d8b77c);color:#38251b;font-weight:900;box-shadow:0 2px 3px #38251b33}.cloud-private-rack small{display:block;margin-top:8px;opacity:.8}.dark .cloud-private-rack{background:#30251d;color:#f2dfbd;border-color:#72553a}
