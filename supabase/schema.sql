@@ -227,7 +227,7 @@ begin
   alter publication supabase_realtime add table public.room_members;
 exception when duplicate_object then null;
 end $$;
-do $
+do $$
 begin
   alter publication supabase_realtime add table public.rooms;
 exception when duplicate_object then null;
@@ -293,11 +293,11 @@ revoke all on public.room_player_private from anon, authenticated;
 grant select on public.room_player_private to authenticated;
 
 -- The private table must exist before it is added to the realtime publication.
-do $
+do $$
 begin
   alter publication supabase_realtime add table public.room_player_private;
 exception when duplicate_object then null;
-end $;
+end $$;
 
 -- Atomically publish the visible match state and save only the caller's private rack.
 -- The client must omit all hidden tile data from public_state.
