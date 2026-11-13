@@ -22,7 +22,7 @@ Password recovery uses Supabase's secure recovery email link.
 
 In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
 
-## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row; hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is a security foundation only; live online turns and rack synchronization are still being implemented.
+## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row. Direct client insert/update access is revoked until trusted server-side turn validation is implemented; hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is a security foundation only; live online turns and rack synchronization are still being implemented.
 
 5. Add the public project settings to GitHub Pages
 
@@ -85,3 +85,8 @@ version. No real-money payment or XP deduction is performed; the project has
 no verified wallet/payment and XP ledger for this action. The dialog explicitly
 discloses this. Run the complete `supabase/schema.sql` file in Supabase after
 updating to install the withdrawal column and RPC.
+
+
+## Private rack write protection
+
+Direct client `INSERT` and `UPDATE` on `room_player_private` are intentionally disabled. Re-enable writes only through a trusted server-side turn pipeline that validates rack ownership, tile draws, move legality, dictionary results, and scoring. Never accept client-submitted racks or scores as authoritative.
