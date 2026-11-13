@@ -14,7 +14,7 @@ test('Arabic tile table is preserved without silently changing the unresolved to
   assert.equal(report.ready,true);
   assert.equal(createTileBag('ar',()=>0.5).length,110);
   assert.ok(TILE_SETS.ar.tiles.some(row=>row[0]==='ئ أول الكلمة'));
-  assert.ok(TILE_SETS.ar.tiles.some(row=>row[0]==='ئ شكل آخر'));
+  assert.ok(TILE_SETS.ar.tiles.some(row=>row[0]==='ئ'));
 });
 
 test('draw returns the requested number and leaves the rest in the bag',()=>{
