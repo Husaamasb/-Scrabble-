@@ -71,3 +71,17 @@ After updating the repository, run the complete `supabase/schema.sql` file
 again in the Supabase SQL Editor so the new RPC is installed. Automatic
 end-of-bag completion is not enabled yet: the server-side tile bag and rack
 turn engine still need to be implemented and validated.
+
+
+## Player withdrawal
+
+The active-room screen includes a withdrawal button with a confirmation dialog.
+Confirming calls `withdraw_scrabble_room`, which marks only that member as
+withdrawn and does not finish the room for everyone else. The requested label
+and confirmation wording are displayed exactly in Arabic.
+
+Important: the displayed “30 ريال و15 XP” wording is not a live charge in this
+version. No real-money payment or XP deduction is performed; the project has
+no verified wallet/payment and XP ledger for this action. The dialog explicitly
+discloses this. Run the complete `supabase/schema.sql` file in Supabase after
+updating to install the withdrawal column and RPC.
