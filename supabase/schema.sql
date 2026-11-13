@@ -184,9 +184,10 @@ drop policy if exists "members see room members" on public.room_members;
 create policy "members see room members" on public.room_members for select to authenticated using(public.is_scrabble_room_member(room_id));
 drop policy if exists "join own room membership" on public.room_members;
 drop policy if exists "users update own membership" on public.room_members;
-create policy "users update own membership" on public.room_members for update to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+-- Membership readiness changes only through set_scrabble_ready; withdrawal only through its RPC.
 drop policy if exists "users leave own room" on public.room_members;
-create policy "users leave own room" on public.room_members for delete to authenticated using(user_id=auth.uid());
+drop policy if exists "users leave waiting or finished rooms" on public.room_members;
+create policy "users leave waiting or finished rooms" on public.room_members for delete to authenticated using(user_id=auth.uid() and exists(select 1 from public.rooms r where r.id=room_id and r.status in ('waiting','finished')));
 
 drop policy if exists "room members read chat" on public.room_messages;
 create policy "room members read chat" on public.room_messages for select to authenticated using(public.is_scrabble_room_member(room_id));
@@ -239,7 +240,7 @@ returns void language plpgsql security definer set search_path = public
 as $$
 begin
   if auth.uid() is null or not public.is_scrabble_room_member(target_room) then raise exception 'Room membership required'; end if;
-  update public.room_members set is_ready=ready_state where room_id=target_room and user_id=auth.uid();
+  update public.room_members set is_ready=ready_state where room_id=target_room and user_id=auth.uid() and not is_withdrawn;
 end;
 $$;
 
