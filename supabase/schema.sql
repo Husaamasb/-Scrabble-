@@ -492,3 +492,88 @@ create trigger record_scrabble_match_result
 after update of status on public.rooms
 for each row when (old.status='playing' and new.status='finished')
 execute function public.record_scrabble_match_result();
+
+
+-- Withdrawals skip the current turn, transfer host control, and settle when one or zero players remain.
+
+create or replace function public.withdraw_scrabble_room(target_room uuid)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = 'public'
+as $function$
+declare
+  target public.rooms;
+  player_ids jsonb;
+  player_count integer;
+  current_index integer;
+  next_index integer;
+  next_user uuid;
+  new_host uuid;
+  step integer;
+  active_count integer;
+  next_log jsonb;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  select * into target from public.rooms where id=target_room for update;
+  if not found then raise exception 'Room not found'; end if;
+  if target.status <> 'playing' then raise exception 'Match is not active'; end if;
+  if not exists(select 1 from public.room_members
+    where room_id=target_room and user_id=auth.uid() and not is_withdrawn) then
+    raise exception 'Active room membership required';
+  end if;
+
+  update public.room_members set is_withdrawn=true,is_ready=false
+  where room_id=target_room and user_id=auth.uid();
+
+  select count(*) into active_count from public.room_members
+  where room_id=target_room and not is_withdrawn;
+
+  if active_count <= 1 then
+    return public.settle_scrabble_room(
+      target_room,null,
+      case when active_count=0 then 'all_withdrawn' else 'last_player_remaining' end
+    );
+  end if;
+
+  player_ids := target.game_state->'player_ids';
+  player_count := coalesce(jsonb_array_length(player_ids),0);
+  current_index := coalesce((target.game_state->>'turn_index')::integer,-1);
+  next_index := current_index;
+  if player_count < 2 or current_index < 0 or current_index >= player_count then
+    raise exception 'Match player order is invalid';
+  end if;
+
+  if player_ids->>current_index=auth.uid()::text then
+    next_user := null;
+    for step in 1..player_count loop
+      next_index := mod(current_index+step,player_count);
+      next_user := (player_ids->>next_index)::uuid;
+      if exists(select 1 from public.room_members
+        where room_id=target_room and user_id=next_user and not is_withdrawn) then
+        exit;
+      end if;
+      next_user := null;
+    end loop;
+    if next_user is null then raise exception 'No active players remain'; end if;
+  end if;
+
+  if target.host_id=auth.uid() then
+    select user_id into new_host from public.room_members
+    where room_id=target_room and not is_withdrawn order by seat limit 1;
+  end if;
+
+  next_log := coalesce(target.game_state->'log','[]'::jsonb)
+    || jsonb_build_array(jsonb_build_object('type','withdraw','user_id',auth.uid(),'at',now()));
+
+  update public.rooms
+  set host_id=coalesce(new_host,host_id),
+      game_state=target.game_state || jsonb_build_object(
+        'turn_index',next_index,
+        'revision',coalesce((target.game_state->>'revision')::integer,0)+1,
+        'log',next_log
+      ),updated_at=now()
+  where id=target_room returning * into target;
+  return target;
+end;
+$function$;
