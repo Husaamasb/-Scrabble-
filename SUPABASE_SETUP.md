@@ -1,140 +1,98 @@
-# Supabase setup for Scrabble
+# Supabase setup for سكرابل العربية
 
-The repository contains the browser client and database schema for accounts, profiles, friends, presence, rooms, and chat. The Scrabble Supabase project is provisioned, the schema is installed, and the GitHub Pages workflow now reads the public configuration from `.env.production`.
+The browser app uses Supabase for accounts, profiles, friends, presence, rooms, private racks, chat, match results, rankings, and tournaments. The project is provisioned and the current schema is deployed.
 
-## 1. Existing backend project
-
-The Scrabble Supabase project has already been created and its database schema has been installed.
+## Existing project
 
 - Project ref: `rwcwuxraekgpaeujhxbg`
 - Region: `ap-south-1` (Mumbai)
 - Project URL: `https://rwcwuxraekgpaeujhxbg.supabase.co`
 - Database: PostgreSQL 17
-- The complete schema is tracked in `supabase/schema.sql` and installed as migrations.
+- Current schema source: `supabase/schema.sql`
 
-The public browser configuration is stored in `.env.production`. It contains only the Supabase project URL and publishable key. Never add a `service_role` or secret key to the repository or browser app.
+The production browser configuration is in `.env.production`. It contains only the public Supabase URL and publishable key. Never put a `service_role` key or any other secret in GitHub or browser code.
 
-### One-time dashboard configuration still required
+## One-time Auth dashboard setup
 
 In Supabase → **Authentication → URL Configuration**:
 
-- Set Site URL to `https://husaamasb.github.io`.
-- Add Redirect URLs:
+- Site URL: `https://husaamasb.github.io`
+- Redirect URLs:
   - `https://husaamasb.github.io/-Scrabble-/**`
   - `http://localhost:5173/**`
 
-In **Authentication → Email Templates**, make sure the confirmation email includes `{{ .Token }}` so the six-digit email verification code works. Configure and test email delivery before inviting real users.
+In **Authentication → Email Templates**, ensure the confirmation template includes `{{ .Token }}` so the six-digit sign-up verification code is included. Configure SMTP/email delivery and test it before inviting real players.
 
-## 2. Configure email verification
+### Current account flows
 
-The app uses Supabase email/password sign-up and a six-digit email verification code. In **Authentication → Email Templates**, make sure the confirmation email includes the token variable `{{ .Token }}`. Email delivery must be configured and tested in Supabase before real users can receive verification codes.
+- Account creation: email + password, followed by a six-digit email confirmation code.
+- Sign-in: email + password.
+- Password recovery: secure email link, followed by new password and confirmation fields.
+- Google and Apple: buttons are present, but each provider must be enabled and configured in **Authentication → Providers** with its own credentials and the callback URL shown by Supabase.
 
-Password recovery uses Supabase's secure recovery email link.
-
-## 3. Configure social login (optional)
-
-In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
+**Important:** a separate email OTP challenge on every password sign-in is not implemented yet. The current six-digit OTP verifies new account creation.
 
 ## Secure administration
 
-The admin section checks the server-managed Auth `app_metadata.scrabble_admin` claim. It never trusts editable user metadata. Only the project owner should assign this claim to the verified owner account from Supabase Authentication user management. Set the user’s **app_metadata** to include `{"scrabble_admin": true}`; do not place this field in user_metadata. Refresh the account session after the change.
+The admin section checks the server-managed Auth `app_metadata.scrabble_admin` claim. It never trusts editable `user_metadata`.
 
-The admin panel reviews player profiles and rooms, closes waiting rooms, reviews player reports, and manages dictionary overrides. The database enforces admin-only RLS policies. Playing rooms cannot be force-closed from the admin panel, and private racks are never included in spectator views.
+To grant the owner account access, open **Authentication → Users**, select the intended account, and add this field under **app_metadata**:
 
-## AI dictionary provider
-
-The online word validator checks Wiktionary first. If an exact entry is missing and an AI provider key is configured, the server asks the AI lexicon reviewer to check the exact spelling. Configure these values as **Supabase Edge Function secrets** (never in GitHub or browser code):
-
-- `OPENAI_API_KEY` — private server-side API key.
-- `OPENAI_DICTIONARY_MODEL` — optional; defaults to `gpt-4.1-mini`.
-
-Without the server secret, the validator safely falls back to Wiktionary only. AI verdicts are cached in the private dictionary cache. The API key must never be pasted into this chat or committed to the repository.
-
-## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row. Direct client insert/update access is revoked; trusted RPCs alone initialize and modify private racks. Hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is protected from browser writes. Server-side pass and exchange actions are implemented; word placement and synchronized scoring are still being built.
-
-## 5. Production build configuration
-
-The GitHub Pages workflow reads `.env.production` during `npm run build`. That file contains only the public project URL and publishable key. A push to `main` triggers the production build and Pages deployment. Never add a `service_role` or secret key to the repository or browser app.
-
-## 6. Local development
-
-Copy `.env.example` to `.env.local`, fill in the same two public values, then run:
-
-```bash
-npm install
-npm run dev
+```json
+{"scrabble_admin": true}
 ```
 
-## What works after setup
+Do not place it in `user_metadata`. Refresh the account session after the change. The admin link then appears in the signed-in account page. The admin panel can review reports, moderate player accounts, close waiting rooms, manage dictionary overrides, and update tournament schedule/prizes/spectator settings. Server-side checks and RLS enforce the same admin permission.
 
-- Email/password account registration and sign-in.
-- Six-digit email verification (requires the Supabase confirmation template to use `{{ .Token }}`).
-- Password reset email.
-- Optional Google and Apple OAuth when configured in Supabase.
-- Player profile and privacy setting.
-- Friend search by public player ID or username, requests, and accept/reject.
-- Online presence while the cloud section is open.
-- Public/private rooms, 2–4 player capacity, six-digit room code, joining, room chat, and direct friend messages.\n- Room member ready status and host-controlled start after at least two players join and everyone is ready.
+## AI-first Arabic and English dictionary
 
-## Still required for a complete online game
+Authenticated games use the server dictionary:
 
-The cloud lobby and chat are not yet a synchronized Scrabble match. Server-side tile distribution and private rack delivery are implemented, and the host start RPC compares starting tiles, redraws tied players, and selects the first player using the closest tile to A/alif. The browser can read only the signed-in player's private rack and listens for realtime changes to that private row. The current dictionary check is an exact-entry lookup against Wiktionary, not an AI model; AI-based word adjudication is not enabled yet. Direct client writes to `room_player_private` remain revoked. Word placement now uses the `scrabble-move` Edge Function: it authenticates the player, validates the proposed line against the authoritative rack and board, checks every formed word against the language-specific Wiktionary entry API with a private server-side cache, and calls a service-role-only SQL transaction that independently rebuilds the words, checks the submitted dictionary result, calculates premium-square scores, refills the rack, updates the board, and advances the turn. The client cannot execute the privileged move RPC directly. Passing and exchanging tiles continue to use dedicated server-side RPCs. Endgame settlement now runs on the server after two full rounds of scoreless turns, when the bag is empty and a player empties their rack, or when the host ends the match; remaining rack values are deducted and awarded according to the finish condition. A server-enforced 120-second reconnect grace is now implemented: the active client refreshes a heartbeat every 20 seconds (and when the tab becomes visible), and a Supabase Cron job checks every 30 seconds. When a player's heartbeat is stale for more than 120 seconds, the server marks them withdrawn, skips their turn when needed, transfers host control if needed, and settles the match if one or zero active players remain. If the player reopens the app within the grace period, their active room is restored automatically and their seat is preserved. Full end-to-end multiplayer testing is still outstanding. Match completion now records private per-player results and updates XP (+20 win, +15 draw, -5 loss) and win/draw/loss counters server-side; players can view their own recent match history. The online page includes a global XP leaderboard, weekly and monthly XP rankings, and lifetime Arabic/English game rankings. Period rankings use aggregate-only rows and display profiles set to Everyone; raw match history remains private. A manual withdrawal is recorded as a loss; if only one active player remains, the room is settled automatically, and a player withdrawing on their turn is skipped. The `scrabble_match_results` table has RLS enabled and authenticated users can read only their own rows; direct writes are denied. Profile progression columns are not updateable by clients, while username, bio, privacy, and avatar presentation fields remain editable. Do not trust client-submitted scores as authoritative or treat the project as a finished release.
+1. A deliberate admin word override takes priority.
+2. A fresh trusted AI verdict cache entry is reused.
+3. If the AI cache has no current result, the server asks the OpenAI Responses API to judge the exact spelling.
+4. Wiktionary is used only if the AI provider is not configured or the AI request fails.
 
+Guest/offline local play uses exact Wiktionary entry checks. Provider failures never automatically approve a word. AI verdicts are cached separately from Wiktionary results, so an old Wiktionary cache entry cannot bypass the AI-first check.
 
-## Ending an online room match
+Configure these as **Supabase Edge Function secrets** (not GitHub secrets and not browser environment variables):
 
-The room host can now end a match with the `finish_scrabble_room` RPC. It checks
-the signed-in user against `rooms.host_id`, changes the room status to
-`finished`, and records `finish_reason: "host"` in the public game state.
-The shared score panel is shown only after the room is finished.
+- `OPENAI_API_KEY` — private server-side key.
+- `OPENAI_DICTIONARY_MODEL` — optional; defaults to `gpt-4.1-mini`.
 
-After updating the repository, run the complete `supabase/schema.sql` file
-again in the Supabase SQL Editor so the new RPC is installed. Automatic
-end-of-bag completion is not enabled yet: the server-side tile bag and rack
-turn engine still need to be implemented and validated.
+The secret must never be pasted into chat or committed to the repository. A successful deployment alone does not prove the key works: make a real authenticated move and confirm the `scrabble-move` / `scrabble-dictionary` Edge Function logs report an AI verdict. During the latest code review, no recent dictionary invocation was present in the function logs, so live provider use still needs an authenticated end-to-end check.
 
+## Online game security and rules
 
-## Player withdrawal
+- The 15×15 public board, scores, turn index, word log, and remaining-tile count live in the room's public game state.
+- The tile bag is server-owned. Browser roles have no access to `room_tile_bag`.
+- Each player's rack is stored in `room_player_private`; RLS lets a player read only their own private row. Direct browser writes are revoked.
+- The start RPC deals the starting-draw tiles, compares the closest tile to A/alif, redraws only tied players, and then deals seven tiles to each player.
+- Online word placement goes through the authenticated `scrabble-move` Edge Function. It checks membership, turn ownership, revision, rack ownership, line placement, gaps, board connection, and every word formed. The database transaction independently reconstructs the words and scoring before changing the board or rack.
+- The server applies premium squares only to newly placed tiles, scores cross-words, awards the seven-tile bonus, refills the rack, and advances the turn.
+- Passing and tile exchanges use dedicated server-authoritative RPCs. Exchanges require at least seven tiles to remain in the bag.
+- Endgame settlement is server-side: remaining rack values are handled when the bag is empty and a player empties their rack, after the scoreless-pass limit, or when the host ends the match.
+- Reconnect grace is 120 seconds. The active client heartbeats and the server handles stale players and turn/host changes.
+- Completed online matches record private per-player results and apply XP (+20 win, +15 draw, −5 loss), update win/loss/draw totals, and feed the leaderboards.
 
-The active-room screen includes a withdrawal button with a confirmation dialog.
-Confirming calls `withdraw_scrabble_room`, which marks only that member as
-withdrawn and does not finish the room for everyone else. The requested label
-and confirmation wording are displayed exactly in Arabic.
+Room members can read public match state, but private racks and the server-owned bag are not published in room state or spectator data.
 
-Important: the displayed “30 ريال و15 XP” wording is not a live charge in this
-version. No real-money payment or XP deduction is performed; the project has
-no verified wallet/payment and XP ledger for this action. The dialog explicitly
-discloses this. Run the complete `supabase/schema.sql` file in Supabase after
-updating to install the withdrawal column and RPC.
+## Tournaments
 
+The tournament lobby supports 4/8/16-player registration, single-elimination brackets, byes, and live updates. Completed room match results automatically advance winners; tied matches are marked for replay. Admins can set schedule, XP/coin prizes, and spectator access before a tournament starts.
 
-## Private rack write protection
+## Schema changes
 
-Direct client `INSERT` and `UPDATE` on `room_player_private` are intentionally disabled. The server-side start and exchange RPCs can update private racks without granting browser write access. Future move RPCs must validate rack ownership, tile draws, move legality, dictionary results, and scoring. Never accept client-submitted racks or scores as authoritative.
+`supabase/schema.sql` is the tracked source for the deployed database schema. When database code changes, review the exact SQL diff and apply the intended migration/SQL patch to the connected project, then verify it with a read-only query and the relevant tests. Do not blindly re-run the entire schema for ordinary frontend or Edge Function changes.
 
+## Remaining release checks
 
-## Server-side cloud tile dealing (new)
+- Test SMTP delivery and the six-digit sign-up confirmation with a real account.
+- Configure and test Google/Apple providers if they will be offered.
+- Test a real authenticated AI dictionary verdict through a move; the recent logs did not yet show a live invocation.
+- Complete end-to-end testing with at least two real player accounts, including room creation, turns, reconnect, pass/exchange, match settlement, and tournament advancement.
+- Activate the intended owner account using `app_metadata.scrabble_admin`.
+- Finish real-device visual/accessibility checks. The Android workflow creates a debug APK for testing; the iOS workflow creates an unsigned Simulator app, not an installable iPhone IPA. Signed store releases require platform signing credentials and the relevant developer accounts.
+- Complete remaining profile presentation details such as avatar selection and achievement/badge display before calling the app release-ready.
 
-The latest schema overrides `start_scrabble_room` to build a shuffled server-owned tile bag using the language-specific distribution. It deals one private starting-draw tile and seven rack tiles per player. The Arabic set matches the user's latest table and totals 110 tiles, including separate entries for `ئ أول الكلمة` (10 points, 2 tiles) and `ئ` (8 points, 1 tile), plus `ى` (3 points, 1 tile) and two jokers. The bag table has RLS enabled and no client privileges; each player can select only their own `room_player_private` row. The cloud screen displays only the signed-in player's rack and refreshes it from realtime row updates.
-
-The server now resolves the starting draw during `start_scrabble_room`: it compares the closest tile to A/alif, redraws only tied players, and stores the public draw history and starter ID. This is still an initialization step, not a complete online game. Server-authoritative tile placement, word/dictionary validation, scoring, rack refill after a valid word, automatic endgame settlement, and full end-to-end multiplayer tests remain outstanding. Passing and exchanging tiles now have dedicated server-authoritative RPCs. Do not enable `submit_scrabble_turn` or client write access to private racks until those checks are implemented.
-
-
-## Server-authoritative pass turn
-
-The cloud match now supports passing a turn through `pass_scrabble_turn`. The RPC locks the room row, checks the active match, membership, withdrawal status, turn owner, and expected revision, then advances to the next non-withdrawn player and records the pass in the public log. It does not accept client-supplied board, score, rack, or bag data. The browser displays the pass button only for the current player. Run the complete `supabase/schema.sql` in Supabase SQL Editor to install this RPC.
-
-Tile placement, dictionary validation, scoring, rack refill after a word, and endgame settlement remain disabled until their own authoritative server-side implementation and tests are complete. Tile exchanges are now implemented separately through `exchange_scrabble_tiles`.
-
-
-## Server-authoritative tile exchange
-
-Players can exchange 1–7 selected tiles during their turn, following the standard rule that at least seven tiles must remain in the bag, through
-`exchange_scrabble_tiles`. The RPC locks the room and the caller's private
-rack, verifies the revision, turn owner, membership, withdrawal status, and
-that every unique selected tile belongs to that rack. It draws the same number
-of replacements from the server-owned bag, returns the selected tiles to the bag and shuffles it, updates only the caller's
-private rack, advances the turn, and records a
-public exchange count without exposing tile identities. The browser has no
-direct write permission to either private table. Re-run the complete
-`supabase/schema.sql` in Supabase SQL Editor to install this RPC.
+Never treat client-submitted racks, scores, dictionary results, or admin flags as authoritative.
