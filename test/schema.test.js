@@ -138,3 +138,11 @@ test('gifts transfer owned cosmetics only between friends and notify the recipie
   assert.ok(cloud.includes("supabase.rpc('resolve_scrabble_gift'"));
   assert.ok(cloud.includes('giftReceived'));
 });
+
+test('wooden chest shows a tappable shuffled row of next tiles and resets reveals when bag changes',()=>{
+  const local=readFileSync(new URL('../src/LocalTable.jsx',import.meta.url),'utf8');
+  assert.ok(local.includes('session.bag.slice(0,7)'));
+  assert.ok(local.includes('className={\'chest-tile \'+(flipped?\'flipped\':\'face-down\')}'));
+  assert.ok(local.includes('setChestFlipId(current=>current===tileId?null:tileId)'));
+  assert.ok(local.includes('useEffect(()=>setChestFlipId(null),[session?.bag])'));
+});
