@@ -171,3 +171,8 @@
 .admin-tournament-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;padding:12px;border:1px solid var(--line,#b99a70);border-radius:10px;background:var(--panel-soft,#f5ead8)}.admin-tournament-form label{display:grid;gap:5px}.admin-tournament-form input{min-width:0}.admin-tournament-form label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px}
 .admin-player-actions{display:flex;flex-wrap:wrap;gap:8px}.admin-player-actions button{font-size:.9em}
 .cloud-avatar-options{display:flex;flex-wrap:wrap;gap:9px;margin:10px 0 16px}.cloud-avatar-options button{width:48px;height:48px;border:1px solid var(--line,#8b7b68);border-radius:50%;background:var(--panel,#f7f3ed);font-size:25px;cursor:pointer}.cloud-avatar-options button.selected{outline:3px solid var(--accent,#9a7435);outline-offset:2px}.cloud-achievements{margin:16px 0}.cloud-achievement-list{display:flex;flex-wrap:wrap;gap:9px}.cloud-achievement{display:grid;justify-items:center;gap:4px;min-width:82px;padding:10px;border:1px solid var(--line,#8b7b68);border-radius:12px;opacity:.45}.cloud-achievement.earned{opacity:1;background:var(--panel,#f7f3ed)}.cloud-achievement span{font-size:25px}.cloud-achievement small{text-align:center;font-size:.75rem}
+
+
+.cloud-profile-avatar-preview{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:14px;border:1px solid var(--panel-border,#d9d9e3);border-radius:14px}
+.cloud-profile-avatar-preview span{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:var(--surface,#f3f1f8);font-size:32px}
+.cloud-profile-avatar-preview strong{font-size:1.05rem}
