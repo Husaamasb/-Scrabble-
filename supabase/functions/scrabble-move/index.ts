@@ -132,19 +132,41 @@ function evaluate(boardInput: any[], rack: any[], placements: any[]) {
   return { words: wordList, total, normalized };
 }
 
-async function dictionaryEntry(word: string, language: "ar" | "en") {
+async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") {
+  const normalized = word.trim();
+  const { data: cached } = await admin
+    .from("scrabble_dictionary_cache")
+    .select("is_valid,checked_at")
+    .eq("language", language)
+    .eq("word", normalized)
+    .maybeSingle();
+  if (cached) {
+    const age = Date.now() - new Date(cached.checked_at).getTime();
+    const ttl = cached.is_valid ? 30 * 24 * 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000;
+    if (Number.isFinite(age) && age >= 0 && age < ttl) return Boolean(cached.is_valid);
+  }
+
   const url = new URL("https://" + language + ".wiktionary.org/w/api.php");
   url.search = new URLSearchParams({
     action: "query",
     format: "json",
     formatversion: "2",
-    titles: word,
+    titles: normalized,
   }).toString();
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  const response = await fetch(url, {
+    headers: { Accept: "application/json", "User-Agent": "ScrabbleArabic/0.2.0" },
+  });
   if (!response.ok) throw new Error("Dictionary service returned " + response.status + ".");
   const data = await response.json();
   const page = data?.query?.pages?.[0];
-  return Boolean(page && !page.missing && !page.invalid);
+  const valid = Boolean(page && !page.missing && !page.invalid);
+  await admin.from("scrabble_dictionary_cache").upsert({
+    language,
+    word: normalized,
+    is_valid: valid,
+    checked_at: new Date().toISOString(),
+  }, { onConflict: "language,word" });
+  return valid;
 }
 
 Deno.serve(withSupabase({ auth: "user" }, async (req, ctx) => {
@@ -186,7 +208,7 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, ctx) => {
     if (!language) return json({ error: "Unsupported room language." }, 400);
 
     const uniqueWords = [...new Set(result.words.map((word) => word.word))].sort();
-    const checks = await Promise.all(uniqueWords.map(async (word) => ({ word, valid: await dictionaryEntry(word, language) })));
+    const checks = await Promise.all(uniqueWords.map(async (word) => ({ word, valid: await dictionaryEntry(admin, word, language) })));
     const invalid = checks.filter((check) => !check.valid);
     if (invalid.length) return json({ error: "Word not found in the " + (language === "ar" ? "Arabic" : "English") + " dictionary: " + invalid.map((x) => x.word).join(", ") }, 422);
 
