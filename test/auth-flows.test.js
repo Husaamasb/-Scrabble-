@@ -10,7 +10,7 @@ test('account UI wires email OTP, password recovery, and Google/Apple OAuth flow
  assert.ok(cloud.includes("type:otpType"));
  assert.ok(cloud.includes("shouldCreateUser:false"));
  assert.ok(cloud.includes('loginCode:'));
- assert.ok(cloud.includes("provider,options:{redirectTo:location.href}"));
+ assert.ok(cloud.includes("provider,options:{redirectTo:window.location.origin+import.meta.env.BASE_URL}"));
 });
 
 test('password recovery requires a confirmed password of at least eight characters',()=>{
