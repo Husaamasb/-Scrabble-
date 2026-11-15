@@ -1925,3 +1925,16 @@ $function$
 revoke all on function public.settle_scrabble_room(uuid,uuid,text) from public, anon, authenticated, service_role;
 revoke all on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) from public, anon, authenticated;
 grant execute on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) to service_role;
+
+
+-- Private server-managed cache for exact Arabic and English dictionary lookups.
+create table if not exists public.scrabble_dictionary_cache (
+  language text not null check (language in ('ar','en')),
+  word text not null check (length(word) between 1 and 80),
+  is_valid boolean not null,
+  checked_at timestamptz not null default now(),
+  primary key(language,word)
+);
+alter table public.scrabble_dictionary_cache enable row level security;
+revoke all on public.scrabble_dictionary_cache from anon, authenticated;
+grant select, insert, update on public.scrabble_dictionary_cache to service_role;
