@@ -1240,3 +1240,118 @@ $exchange$;
 
 grant execute on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) to authenticated;
 revoke all on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) from public, anon;
+
+ 
+-- Privacy-safe aggregate leaderboards. Raw match history remains private to its owner.
+create table if not exists public.scrabble_leaderboard_periods (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  language text not null check(language in ('ar','en','all')),
+  period_type text not null check(period_type in ('all_time','weekly','monthly')),
+  period_start date not null,
+  xp_change integer not null default 0,
+  wins integer not null default 0,
+  draws integer not null default 0,
+  losses integer not null default 0,
+  games integer not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key(user_id,language,period_type,period_start),
+  check (
+    (period_type='all_time' and period_start=date '0001-01-01')
+    or (period_type<>'all_time' and period_start<>date '0001-01-01')
+  )
+);
+create index if not exists scrabble_leaderboard_period_lookup_idx
+  on public.scrabble_leaderboard_periods(period_type,language,period_start,xp_change desc,wins desc);
+alter table public.scrabble_leaderboard_periods enable row level security;
+drop policy if exists "public leaderboard aggregates visible" on public.scrabble_leaderboard_periods;
+create policy "public leaderboard aggregates visible"
+  on public.scrabble_leaderboard_periods for select to authenticated
+  using (exists(
+    select 1 from public.profiles p
+    where p.id=scrabble_leaderboard_periods.user_id and p.privacy='everyone'
+  ));
+revoke all on public.scrabble_leaderboard_periods from anon,authenticated;
+grant select on public.scrabble_leaderboard_periods to authenticated;
+
+create or replace function public.aggregate_scrabble_leaderboard_periods()
+returns trigger language plpgsql security definer set search_path = ''
+as $function$
+declare
+  week_start date := date_trunc('week',new.created_at at time zone 'UTC')::date;
+  month_start date := date_trunc('month',new.created_at at time zone 'UTC')::date;
+  win_count integer := case when new.outcome='win' then 1 else 0 end;
+  draw_count integer := case when new.outcome='draw' then 1 else 0 end;
+  loss_count integer := case when new.outcome='loss' then 1 else 0 end;
+begin
+  insert into public.scrabble_leaderboard_periods
+    (user_id,language,period_type,period_start,xp_change,wins,draws,losses,games,updated_at)
+  values
+    (new.user_id,new.language,'all_time',date '0001-01-01',new.xp_change,win_count,draw_count,loss_count,1,now()),
+    (new.user_id,'all','all_time',date '0001-01-01',new.xp_change,win_count,draw_count,loss_count,1,now()),
+    (new.user_id,new.language,'weekly',week_start,new.xp_change,win_count,draw_count,loss_count,1,now()),
+    (new.user_id,'all','weekly',week_start,new.xp_change,win_count,draw_count,loss_count,1,now()),
+    (new.user_id,new.language,'monthly',month_start,new.xp_change,win_count,draw_count,loss_count,1,now()),
+    (new.user_id,'all','monthly',month_start,new.xp_change,win_count,draw_count,loss_count,1,now())
+  on conflict(user_id,language,period_type,period_start) do update
+  set xp_change=public.scrabble_leaderboard_periods.xp_change+excluded.xp_change,
+      wins=public.scrabble_leaderboard_periods.wins+excluded.wins,
+      draws=public.scrabble_leaderboard_periods.draws+excluded.draws,
+      losses=public.scrabble_leaderboard_periods.losses+excluded.losses,
+      games=public.scrabble_leaderboard_periods.games+excluded.games,
+      updated_at=now();
+  return new;
+end;
+$function$;
+revoke all on function public.aggregate_scrabble_leaderboard_periods() from public,anon,authenticated,service_role;
+drop trigger if exists aggregate_scrabble_leaderboard_periods on public.scrabble_match_results;
+create trigger aggregate_scrabble_leaderboard_periods
+after insert on public.scrabble_match_results
+for each row execute function public.aggregate_scrabble_leaderboard_periods();
+
+-- Backfill existing completed games, safe to re-run.
+insert into public.scrabble_leaderboard_periods
+  (user_id,language,period_type,period_start,xp_change,wins,draws,losses,games)
+select user_id,language,'all_time',date '0001-01-01',sum(xp_change),
+       count(*) filter(where outcome='win'),count(*) filter(where outcome='draw'),
+       count(*) filter(where outcome='loss'),count(*)
+from public.scrabble_match_results group by user_id,language
+on conflict do nothing;
+insert into public.scrabble_leaderboard_periods
+  (user_id,language,period_type,period_start,xp_change,wins,draws,losses,games)
+select user_id,'all','all_time',date '0001-01-01',sum(xp_change),
+       count(*) filter(where outcome='win'),count(*) filter(where outcome='draw'),
+       count(*) filter(where outcome='loss'),count(*)
+from public.scrabble_match_results group by user_id
+on conflict do nothing;
+insert into public.scrabble_leaderboard_periods
+  (user_id,language,period_type,period_start,xp_change,wins,draws,losses,games)
+select user_id,language,'weekly',date_trunc('week',created_at at time zone 'UTC')::date,sum(xp_change),
+       count(*) filter(where outcome='win'),count(*) filter(where outcome='draw'),
+       count(*) filter(where outcome='loss'),count(*)
+from public.scrabble_match_results
+group by user_id,language,date_trunc('week',created_at at time zone 'UTC')::date
+on conflict do nothing;
+insert into public.scrabble_leaderboard_periods
+  (user_id,language,period_type,period_start,xp_change,wins,draws,losses,games)
+select user_id,'all','weekly',date_trunc('week',created_at at time zone 'UTC')::date,sum(xp_change),
+       count(*) filter(where outcome='win'),count(*) filter(where outcome='draw'),
+       count(*) filter(where outcome='loss'),count(*)
+from public.scrabble_match_results
+group by user_id,date_trunc('week',created_at at time zone 'UTC')::date
+on conflict do nothing;
+insert into public.scrabble_leaderboard_periods
+  (user_id,language,period_type,period_start,xp_change,wins,draws,losses,games)
+select user_id,language,'monthly',date_trunc('month',created_at at time zone 'UTC')::date,sum(xp_change),
+       count(*) filter(where outcome='win'),count(*) filter(where outcome='draw'),
+       count(*) filter(where outcome='loss'),count(*)
+from public.scrabble_match_results
+group by user_id,language,date_trunc('month',created_at at time zone 'UTC')::date
+on conflict do nothing;
+insert into public.scrabble_leaderboard_periods
+  (user_id,language,period_type,period_start,xp_change,wins,draws,losses,games)
+select user_id,'all','monthly',date_trunc('month',created_at at time zone 'UTC')::date,sum(xp_change),
+       count(*) filter(where outcome='win'),count(*) filter(where outcome='draw'),
+       count(*) filter(where outcome='loss'),count(*)
+from public.scrabble_match_results
+group by user_id,date_trunc('month',created_at at time zone 'UTC')::date
+on conflict do nothing;
