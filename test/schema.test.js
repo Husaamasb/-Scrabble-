@@ -83,6 +83,8 @@ test('daily challenges are driven by server match results and claim XP through a
   assert.ok(schema.includes('grant execute on function public.claim_scrabble_daily_challenge(date,text) to authenticated'));
   assert.ok(schema.includes('revoke all on function public.claim_scrabble_daily_challenge(date,text) from public, anon'));
   const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
-  assert.ok(cloud.includes("section!=='tasks'"));
+  assert.ok(cloud.includes("section==='tasks'"));
+  assert.ok(cloud.includes("supabase.from('scrabble_daily_challenge_progress')"));
+  assert.ok(cloud.includes("claimDailyChallenge"));
   assert.ok(cloud.includes("supabase.rpc('claim_scrabble_daily_challenge'"));
 });
