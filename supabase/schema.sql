@@ -729,6 +729,6 @@ revoke all on function public.expire_scrabble_disconnects() from public,anon,aut
 
 select cron.schedule(
   'scrabble-reconnect-grace-expiry',
-  '30 seconds',
+  '10 seconds',
   'select public.expire_scrabble_disconnects();'
 );
