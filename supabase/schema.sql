@@ -1938,3 +1938,25 @@ create table if not exists public.scrabble_dictionary_cache (
 alter table public.scrabble_dictionary_cache enable row level security;
 revoke all on public.scrabble_dictionary_cache from anon, authenticated;
 grant select, insert, update on public.scrabble_dictionary_cache to service_role;
+
+-- RLS performance: evaluate auth.uid() once per statement.
+alter policy "direct message participants read" on public.direct_messages using (((sender_id = ( SELECT auth.uid() AS uid)) OR (recipient_id = ( SELECT auth.uid() AS uid))));
+alter policy "send direct messages" on public.direct_messages with check (((sender_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1
+   FROM friendships f
+  WHERE (((f.user_low = ( SELECT auth.uid() AS uid)) AND (f.user_high = direct_messages.recipient_id)) OR ((f.user_high = ( SELECT auth.uid() AS uid)) AND (f.user_low = direct_messages.recipient_id)))))));
+alter policy "friend requests visible to participants" on public.friend_requests using (((sender_id = ( SELECT auth.uid() AS uid)) OR (receiver_id = ( SELECT auth.uid() AS uid))));
+alter policy "receiver can update request" on public.friend_requests using (((receiver_id = ( SELECT auth.uid() AS uid)) AND (status = 'pending'::text))) with check (((receiver_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['accepted'::text, 'rejected'::text]))));
+alter policy "send friend requests" on public.friend_requests with check (((sender_id = ( SELECT auth.uid() AS uid)) AND (status = 'pending'::text)));
+alter policy "friendships visible to participants" on public.friendships using (((user_low = ( SELECT auth.uid() AS uid)) OR (user_high = ( SELECT auth.uid() AS uid))));
+alter policy "profiles readable by privacy settings" on public.profiles using (((id = ( SELECT auth.uid() AS uid)) OR (privacy = 'everyone'::text) OR ((privacy = 'friends'::text) AND (EXISTS ( SELECT 1
+   FROM friendships f
+  WHERE (((f.user_low = ( SELECT auth.uid() AS uid)) AND (f.user_high = profiles.id)) OR ((f.user_high = ( SELECT auth.uid() AS uid)) AND (f.user_low = profiles.id))))))));
+alter policy "users update own profile" on public.profiles using ((id = ( SELECT auth.uid() AS uid))) with check ((id = ( SELECT auth.uid() AS uid)));
+alter policy "receiver updates room invite" on public.room_invites using (((receiver_id = ( SELECT auth.uid() AS uid)) AND (status = 'pending'::text))) with check (((receiver_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['accepted'::text, 'rejected'::text]))));
+alter policy "room invite participants read" on public.room_invites using (((sender_id = ( SELECT auth.uid() AS uid)) OR (receiver_id = ( SELECT auth.uid() AS uid))));
+alter policy "send room invites" on public.room_invites with check (((sender_id = ( SELECT auth.uid() AS uid)) AND is_scrabble_room_member(room_id)));
+alter policy "users leave waiting or finished rooms" on public.room_members using (((user_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1
+   FROM rooms r
+  WHERE ((r.id = room_members.room_id) AND (r.status = ANY (ARRAY['waiting'::text, 'finished'::text])))))));
+alter policy "room members send chat" on public.room_messages with check (((sender_id = ( SELECT auth.uid() AS uid)) AND is_scrabble_room_member(room_id)));
+alter policy "players read only their private room state" on public.room_player_private using (((user_id = ( SELECT auth.uid() AS uid)) AND is_scrabble_room_member(room_id)));
