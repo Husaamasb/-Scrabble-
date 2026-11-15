@@ -9,7 +9,7 @@ test('wooden chest opens with a hinged lid and displays one shuffled row',()=>{
  assert.ok(local.includes('session.bag.slice(0,7)'));
  assert.ok(local.includes('className="chest-row"'));
  assert.ok(local.includes('session.bag.length'));
- assert.ok(css.includes('.chest-lid.open{transform:perspective(500px) rotateX(-48deg)}'));
+ assert.ok(css.includes('.chest-lid.open{transform:perspective(500px) rotateX(-48deg);'));
  assert.ok(css.includes('.chest-row{display:flex'));
 });
 test('chest tiles flip one at a time and reveal the next face',()=>{
