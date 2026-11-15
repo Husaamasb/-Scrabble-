@@ -33,13 +33,13 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
 - Supabase integration: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
-- Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated pass and tile-exchange actions. The cloud board remains read-only until authoritative word validation, placement, scoring, and rack refill are implemented.
+- Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated word placement, dictionary checks, scoring, rack refill, pass, exchange, and endgame settlement.
 - Capacitor Android/iOS support plus an automated macOS GitHub Actions build for the iOS Simulator.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
 
 ## Still required for a complete release
 
-- Complete authoritative online Scrabble gameplay: server-side move geometry, dictionary verification, scoring, rack refill, endgame settlement, reconnect recovery, and online results.
+- Expand full account-backed social features, matchmaking, tournaments, daily challenges, rewards, and push notifications; verify all room lifecycle edge cases with multiple real accounts.
 - Full account-backed social features, matchmaking, invites, tournaments, daily challenges, rankings, XP, coins, badges, store, rewards, push notifications, and statistics.
 - Full hinged chest animation and final device-specific icon packaging. **The approved artwork in `public/icon.svg` must remain unchanged.**
 - Supabase project provisioned and connected to the GitHub Pages production build through the public values in `.env.production`; database schema and migrations are installed. Authentication redirect URLs and the six-digit email template still need one-time dashboard configuration (see `SUPABASE_SETUP.md`).
@@ -65,7 +65,7 @@ An Android APK is not installable on iPhone/iPad; iOS requires a signed iOS buil
 
 ## Online Scrabble progress
 
-Online rooms now support server-validated word placement through the `scrabble-move` Edge Function, exact dictionary-entry checks for the room language, server-side scoring and rack refill, a live score display and word log, and automatic endgame rack settlement. Realtime reconnect recovery now restores an active room within the 120-second grace window. Completed online matches persist results and XP (+20 win, +15 draw, -5 loss), profile history, and global/weekly/monthly/Arabic/English leaderboards. The project is not yet a complete release.
+Online rooms support server-validated word placement through the `scrabble-move` Edge Function and an atomic database function, exact dictionary-entry checks for the room language, server-side scoring and rack refill, a live score display and word log, and automatic endgame rack settlement. Realtime reconnect recovery restores an active room within the 120-second grace window. Completed online matches persist results and XP (+20 win, +15 draw, -5 loss), profile history, and global/weekly/monthly/Arabic/English leaderboards. The SQL source now includes the deployed word-placement RPC and its service-role-only dictionary cache. This is still an in-progress project, not a complete release.
 
 
 ## Tests
