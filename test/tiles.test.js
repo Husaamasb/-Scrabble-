@@ -81,7 +81,7 @@ test('generic client turn submission remains disabled until authoritative valida
 
 test('cloud match initialization creates the tile bag and private racks on the server',()=>{
   const schema=readFileSync(new URL('../supabase/schema.sql',import.meta.url),'utf8');
-  const fn=schema.lastIndexOf('create or replace function public.start_scrabble_room');
+  const fn=schema.lastIndexOf('create or replace function public.start_scrabble_room(target_room uuid)');
   const start=schema.slice(fn);
   assert.ok(fn>=0);
   assert.ok(start.startsWith('create or replace function public.start_scrabble_room(target_room uuid)'));
