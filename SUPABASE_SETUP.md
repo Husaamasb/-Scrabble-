@@ -25,12 +25,12 @@ In **Authentication → Email Templates**, ensure the confirmation template incl
 
 ### Current account flows
 
-- Account creation: email + password, followed by a six-digit email confirmation code.
-- Sign-in: email + password.
+- Account creation: email + password, followed by Supabase email confirmation. The confirmation can be completed from the email link or by entering the six-digit token when the template exposes it.
+- Sign-in: email + password is verified in a non-persistent client first; a six-digit email OTP is then sent, and the main signed-in session is created only after OTP verification.
 - Password recovery: secure email link, followed by new password and confirmation fields.
 - Google and Apple: buttons are present, but each provider must be enabled and configured in **Authentication → Providers** with its own credentials and the callback URL shown by Supabase.
 
-**Important:** a separate email OTP challenge on every password sign-in is not implemented yet. The current six-digit OTP verifies new account creation.
+**Important:** password sign-in includes a separate email OTP challenge. This flow requires email OTP to be enabled in Supabase Auth and tested with real email delivery.
 
 ## Secure administration
 
