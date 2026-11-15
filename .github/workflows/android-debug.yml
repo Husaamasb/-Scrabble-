@@ -83,10 +83,15 @@ jobs:
             adb wait-for-device
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
             adb shell monkey -p com.husaamasb.scrabble 1
-            sleep 12
-            adb shell pidof com.husaamasb.scrabble >/dev/null || { echo "Scrabble process is not running after launch"; adb logcat -d -t 500; exit 1; }
+            sleep 45
+            adb shell pidof com.husaamasb.scrabble >/dev/null || { echo "Scrabble process is not running after launch"; adb logcat -d -t 1000; exit 1; }
+            adb logcat -d -v time > "$GITHUB_WORKSPACE/android-logcat.txt"
+            adb shell dumpsys activity activities > "$GITHUB_WORKSPACE/android-activity.txt"
+            adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
+            adb pull /sdcard/window.xml "$GITHUB_WORKSPACE/android-window.xml" >/dev/null 2>&1 || true
             adb exec-out screencap -p > "$GITHUB_WORKSPACE/scrabble-emulator.png"
             test -s "$GITHUB_WORKSPACE/scrabble-emulator.png"
+            grep -q "mResumedActivity" "$GITHUB_WORKSPACE/android-activity.txt" || { echo "No resumed Android activity"; cat "$GITHUB_WORKSPACE/android-activity.txt"; exit 1; }
 
       - uses: actions/upload-artifact@v4
         with:
