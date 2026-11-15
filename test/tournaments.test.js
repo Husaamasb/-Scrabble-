@@ -46,7 +46,7 @@ test('tournament winners are derived only from completed server match results', 
   assert.match(schema, /from public\.scrabble_match_results where room_id=new\.id/);
   assert.match(schema, /perform public\.complete_scrabble_tournament_match/);
   assert.match(schema, /status='tied',room_id=null/);
-  assert.doesNotMatch(schema, /create or replace function public\.report_scrabble_tournament_match/);
+  assert.match(schema, /drop function if exists public\.report_scrabble_tournament_match\(uuid,uuid\)/);
   assert.match(cloud, /openTournamentMatch/);
   assert.doesNotMatch(cloud, /recordTournamentWinner/);
 });
