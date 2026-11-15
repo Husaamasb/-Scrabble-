@@ -78,7 +78,7 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
 
   const { data: cached, error: cacheError } = await admin
     .from("scrabble_dictionary_cache")
-    .select("is_valid,checked_at")
+    .select("is_valid,checked_at,source")
     .eq("language", language)
     .eq("word", normalized)
     .maybeSingle();
@@ -86,7 +86,7 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
   if (cached) {
     const age = Date.now() - new Date(cached.checked_at).getTime();
     const ttl = cached.is_valid ? 30 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
-    if (Number.isFinite(age) && age >= 0 && age < ttl) {
+    if (cached.source === "ai" && Number.isFinite(age) && age >= 0 && age < ttl) {
       return { valid: Boolean(cached.is_valid), source: "cache" };
     }
   }
@@ -140,6 +140,7 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
       word: normalized,
       is_valid: valid,
       checked_at: new Date().toISOString(),
+      source,
     }, { onConflict: "language,word" });
     if (error) console.error("Dictionary cache write failed:", error);
   }
