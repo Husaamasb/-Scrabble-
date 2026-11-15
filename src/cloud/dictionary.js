@@ -2,8 +2,9 @@ import { isCloudConfigured, supabase } from './supabase.js';
 import { createWiktionaryValidator } from '../game/wordValidator.js';
 
 /**
- * Prefer the authenticated server dictionary (Wiktionary + optional AI review).
- * Keep local Wiktionary as a safe fallback for offline/local guests.
+ * Signed-in players use the server dictionary, which checks admin overrides,
+ * then AI-first verdicts, then Wiktionary only if the AI provider is unavailable.
+ * Offline guests retain the local Wiktionary fallback; this path is not AI-backed.
  */
 export function createHybridDictionaryValidator(fetchImpl = globalThis.fetch) {
   const localValidator = createWiktionaryValidator(fetchImpl);
