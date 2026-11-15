@@ -126,3 +126,15 @@ test('virtual store purchases are server-authoritative and inventory is private'
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
   assert.ok(dashboard.includes("'store'].includes(section)"));
 });
+
+test('gifts transfer owned cosmetics only between friends and notify the recipient',()=>{
+  assert.ok(schema.includes('create table if not exists public.scrabble_gifts'));
+  assert.ok(schema.includes('create or replace function public.send_scrabble_gift(recipient uuid,target_item text)'));
+  assert.ok(schema.includes('Gifts can only be sent to friends'));
+  assert.ok(schema.includes('create or replace function public.resolve_scrabble_gift(target_gift uuid,accept_gift boolean)'));
+  assert.ok(schema.includes('create trigger notify_scrabble_gift_received'));
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("supabase.rpc('send_scrabble_gift'"));
+  assert.ok(cloud.includes("supabase.rpc('resolve_scrabble_gift'"));
+  assert.ok(cloud.includes('giftReceived'));
+});
