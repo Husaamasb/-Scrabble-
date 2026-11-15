@@ -34,13 +34,14 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
 - Supabase integration: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
 - Friend QR sharing and image-based QR scanning (on browsers with BarcodeDetector), with manual player-ID search as a fallback.
+- Account-backed tournament lobby with 4/8/16-player registration, host-controlled starts, single-elimination rounds, automatic byes, and bracket progression; tournament hosts currently record match winners manually.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated word placement, dictionary checks, scoring, rack refill, pass, exchange, and endgame settlement.
 - Capacitor Android/iOS support plus an automated macOS GitHub Actions build for the iOS Simulator.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
 
 ## Still required for a complete release
 
-- Expand full account-backed social features, matchmaking, tournaments, daily challenges, rewards, and push notifications; verify all room lifecycle edge cases with multiple real accounts.
+- Match tournament brackets to live room results automatically (current tournament hosts record bracket winners manually); add tournament scheduling, prizes, and spectator mode.
 - Full account-backed social features, matchmaking, invites, tournaments, daily challenges, rankings, XP, coins, badges, store, rewards, push notifications, and statistics.
 - Full hinged chest animation and final device-specific icon packaging. **The approved artwork in `public/icon.svg` must remain unchanged.**
 - Supabase project provisioned and connected to the GitHub Pages production build through the public values in `.env.production`; database schema and migrations are installed. Authentication redirect URLs and the six-digit email template still need one-time dashboard configuration (see `SUPABASE_SETUP.md`).
