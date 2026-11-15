@@ -125,3 +125,19 @@ The server-side AI dictionary uses an OpenAI API key stored only as a Supabase E
 - `OPENAI_DICTIONARY_MODEL` (optional): defaults to `gpt-4.1-mini`.
 
 The AI review runs only when the exact Wiktionary lookup has no entry. Results are cached server-side; admin dictionary overrides take priority. Without the key, the app safely continues using Wiktionary. Configure the key at [Supabase Edge Function Secrets](https://supabase.com/dashboard/project/rwcwuxraekgpaeujhxbg/functions/secrets).
+
+
+## Admin operations
+
+- Admin authorization is checked server-side against Supabase Auth `app_metadata.scrabble_admin`; client-editable user metadata is never used for privileges.
+- The admin dashboard can review player reports, close waiting rooms, edit dictionary overrides, and adjust tournament schedules, prizes, and spectator access before registration closes.
+- Player accounts can be suspended for 24 hours, 7 days, or 30 days, and suspensions can be lifted. Admin accounts and the current admin cannot be suspended through this tool.
+- Player email and ban status are loaded through the authenticated `scrabble-admin` Edge Function; they are not exposed in the public profiles table.
+- To grant the first administrator, the project owner must set `{"scrabble_admin":true}` in that user's **App Metadata** in Supabase Authentication → Users. Do not put this flag in User Metadata.
+- Supabase Auth bans block new sign-ins; an already-issued access token can remain valid until it expires, so this is not an instant session-revocation guarantee.
+
+## Deployed Edge Functions
+
+- `scrabble-move`: server-authoritative online move validation and scoring.
+- `scrabble-dictionary`: authenticated dictionary validation for local matches.
+- `scrabble-admin`: admin-only player listing and account moderation.
