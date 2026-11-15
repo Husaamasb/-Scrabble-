@@ -71,3 +71,8 @@ Online rooms now support server-validated word placement through the `scrabble-m
 ## Tests
 
 Run `npm test` to execute the automated board, move-validation, scoring, and tile-distribution tests before building the app.
+
+
+## Player progression
+
+Completed online matches are settled server-side. Final scores determine wins, draws, and losses; XP changes by +20 for a win, +15 for a draw, and -5 for a loss (XP never falls below zero). The profile shows progression totals and the player's own recent match history. Match-result rows are protected by RLS, and clients cannot directly change XP or match counters.
