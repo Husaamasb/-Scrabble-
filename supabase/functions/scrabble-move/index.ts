@@ -232,4 +232,4 @@ Deno.serve(async (req) => {
     console.error("scrabble-move:", error);
     return json({ error: error instanceof Error ? error.message : "Could not validate this move." }, 500);
   }
-}});
+});
