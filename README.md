@@ -32,7 +32,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
-- Supabase integration foundation: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
+- Supabase integration: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated pass and tile-exchange actions. The cloud board remains read-only until authoritative word validation, placement, scoring, and rack refill are implemented.
 - Capacitor configuration and native build instructions for Android and iOS.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
@@ -65,7 +65,7 @@ An Android APK is not installable on iPhone/iPad; iOS requires a signed iOS buil
 
 ## Online Scrabble progress
 
-Online rooms now support server-validated word placement through the `scrabble-move` Edge Function, exact dictionary-entry checks for the room language, server-side scoring and rack refill, a live score display and word log, and automatic endgame rack settlement. Realtime reconnect recovery and online result/XP persistence remain unfinished; the project is not yet a complete release.
+Online rooms now support server-validated word placement through the `scrabble-move` Edge Function, exact dictionary-entry checks for the room language, server-side scoring and rack refill, a live score display and word log, and automatic endgame rack settlement. Realtime reconnect recovery now restores an active room within the 120-second grace window. Completed online matches persist results and XP (+20 win, +15 draw, -5 loss), profile history, and global/weekly/monthly/Arabic/English leaderboards. The project is not yet a complete release.
 
 
 ## Tests
