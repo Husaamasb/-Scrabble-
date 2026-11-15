@@ -68,6 +68,21 @@ test('authoritative online move RPC and dictionary cache are included in the rep
   assert.ok(schema.includes("grant execute on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) to service_role"));
 });
 
+
+test('room creator selects the match end condition without adding turn timers',()=>{
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.match(schema,/end_condition text not null default 'classic' check\(end_condition in \('classic','bag_empty'\)\)/);
+  assert.ok(schema.includes('create or replace function public.create_scrabble_room_with_rules'));
+  assert.ok(schema.includes("if target.end_condition='bag_empty' then"));
+  assert.ok(schema.includes("settle_scrabble_room(target_room,null,'bag_empty')"));
+  assert.ok(schema.includes('revoke all on function public.create_scrabble_room_with_rules(text,boolean,int,text,text) from public,anon'));
+  assert.ok(schema.includes('grant execute on function public.create_scrabble_room_with_rules(text,boolean,int,text,text) to authenticated'));
+  assert.ok(cloud.includes("supabase.rpc('create_scrabble_room_with_rules'"));
+  assert.ok(cloud.includes("value=\"bag_empty\""));
+  assert.ok(cloud.includes("matchEndMode:'طريقة انتهاء المباراة'"));
+  assert.ok(!cloud.includes('turnTimer'));
+});
+
 test('online presence uses one shared realtime channel for all signed-in players',()=>{
   const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
   assert.ok(cloud.includes("supabase.channel('scrabble:online',{config:{presence:{key:user.id}}})"));
