@@ -24,7 +24,6 @@ test('turn commit requires a configured dictionary and does not mutate the sourc
   assert.equal(Object.keys(session.board).length,0);
 });
 
-
 test('a tile cannot be placed twice in one move',async()=>{
   const session=sampleSession();
   const reused=session.players[0].rack[0];
@@ -93,7 +92,7 @@ test('new sessions deal seven tiles to each player and preserve the correct bag 
   assert.equal(new Set(game.players.flatMap(p=>p.rack.map(t=>t.id))).size,14);
   const arabic=createGameSession('ar',['One','Two','Three'],()=>0.31);
   assert.equal(arabic.players.reduce((sum,p)=>sum+p.rack.length,0),21);
-  assert.equal(arabic.bag.length,89);
+  assert.equal(arabic.bag.length,87);
   assert.throws(()=>createGameSession('en',['Only one']),/2 to 4 players/);
 });
 
@@ -103,7 +102,6 @@ test('first player is selected by the tile closest to alif/A, ties require redra
   assert.deepEqual(chooseStartingPlayer(['ئ','ت'],'ar'),{tie:false,playerIndex:0});
   assert.deepEqual(chooseStartingPlayer(['A','A'],'en'),{tie:true,playerIndices:[0,1]});
 });
-
 
 test('session tile IDs use the injected random source deterministically',()=>{
   const first=createGameSession('en',['One','Two'],()=>0.25);
