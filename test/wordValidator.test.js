@@ -25,3 +25,12 @@ test('dictionary network failures never approve words',async()=>{
   assert.equal(result.words[0].accepted,false);
   assert.equal(result.reason,'word-not-accepted');
 });
+
+test('server dictionary has a secret-backed AI fallback for missing Wiktionary entries',()=>{
+  const source=readFileSync(new URL('../supabase/functions/scrabble-move/index.ts',import.meta.url),'utf8');
+  assert.ok(source.includes('OPENAI_API_KEY'));
+  assert.ok(source.includes('OPENAI_DICTIONARY_MODEL'));
+  assert.ok(source.includes('api.openai.com/v1/chat/completions'));
+  assert.ok(source.includes('response_format: { type: "json_object" }'));
+  assert.ok(source.includes('if (!valid && openAiKey)'));
+});
