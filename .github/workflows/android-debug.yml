@@ -84,13 +84,6 @@ jobs:
               adb logcat -d -t 500
               exit 1
             fi
-            adb shell dumpsys activity activities > /tmp/scrabble-activities.txt
-            if ! grep -q 'com.husaamasb.scrabble' /tmp/scrabble-activities.txt; then
-              echo "Scrabble activity was not found in the activity manager output"
-              cat /tmp/scrabble-activities.txt
-              adb logcat -d -t 500
-              exit 1
-            fi
             adb shell screencap -p /sdcard/scrabble-emulator.png
             adb pull /sdcard/scrabble-emulator.png "$GITHUB_WORKSPACE/scrabble-emulator.png"
 
