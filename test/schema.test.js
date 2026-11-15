@@ -93,6 +93,7 @@ test('room creator selects the match end condition without adding turn timers',(
   assert.ok(schema.includes('grant execute on function public.create_scrabble_room_with_rules(text,boolean,int,text,text) to authenticated'));
   assert.ok(cloud.includes("supabase.rpc('create_scrabble_room_with_rules'"));
   assert.ok(cloud.includes("value=\"bag_empty\""));
+  assert.ok(cloud.includes("activeRoom.end_condition==='bag_empty'"));
   assert.ok(cloud.includes("matchEndMode:'طريقة انتهاء المباراة'"));
   assert.ok(!cloud.includes('turnTimer'));
 });
