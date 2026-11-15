@@ -1,6 +1,7 @@
 -- Scrabble cloud backend (Supabase / PostgreSQL)
 -- Run this entire file in Supabase SQL Editor.
 create extension if not exists pgcrypto;
+create extension if not exists pg_cron with schema pg_catalog;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -412,7 +413,8 @@ grant execute on function public.finish_scrabble_room(uuid) to authenticated;
 
 -- A player may withdraw from an active room without ending the match.
 alter table public.room_members
-  add column if not exists is_withdrawn boolean not null default false;
+  add column if not exists is_withdrawn boolean not null default false,
+  add column if not exists last_seen_at timestamptz not null default now();
 
 create or replace function public.record_scrabble_match_result()
 returns trigger
@@ -577,3 +579,148 @@ begin
   return target;
 end;
 $function$;
+
+ 
+-- Server-enforced 120-second reconnect grace. The client refreshes last_seen_at
+-- every 20 seconds while the active match is open. Cron expires only stale rows.
+create index if not exists room_members_stale_heartbeat_idx
+  on public.room_members(last_seen_at)
+  where not is_withdrawn;
+
+create or replace function public.initialize_scrabble_room_heartbeats()
+returns trigger language plpgsql security definer set search_path = ''
+as $function$
+begin
+  if old.status is distinct from new.status and new.status = 'playing' then
+    update public.room_members set last_seen_at=clock_timestamp()
+    where room_id=new.id and not is_withdrawn;
+  end if;
+  return new;
+end;
+$function$;
+revoke all on function public.initialize_scrabble_room_heartbeats() from public,anon,authenticated,service_role;
+drop trigger if exists initialize_scrabble_room_heartbeats on public.rooms;
+create trigger initialize_scrabble_room_heartbeats
+after update of status on public.rooms
+for each row execute function public.initialize_scrabble_room_heartbeats();
+
+create or replace function public.heartbeat_scrabble_room(target_room uuid)
+returns void language plpgsql security definer set search_path = ''
+as $function$
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  update public.room_members m
+    set last_seen_at=clock_timestamp()
+    from public.rooms r
+    where m.room_id=target_room and m.user_id=auth.uid()
+      and not m.is_withdrawn and r.id=m.room_id and r.status='playing';
+  if not found then raise exception 'Reconnect window expired or match is no longer active'; end if;
+end;
+$function$;
+revoke all on function public.heartbeat_scrabble_room(uuid) from public,anon;
+grant execute on function public.heartbeat_scrabble_room(uuid) to authenticated;
+
+create or replace function public.expire_scrabble_disconnects()
+returns integer language plpgsql security definer set search_path = ''
+as $function$
+declare
+  candidate record;
+  target public.rooms;
+  member_row public.room_members;
+  player_ids jsonb;
+  player_count integer;
+  current_index integer;
+  next_index integer;
+  next_user uuid;
+  new_host uuid;
+  step integer;
+  active_count integer;
+  next_log jsonb;
+  expired_count integer := 0;
+begin
+  for candidate in
+    select m.room_id,m.user_id
+    from public.room_members m
+    join public.rooms r on r.id=m.room_id
+    where r.status='playing' and not m.is_withdrawn
+      and m.last_seen_at < clock_timestamp()-interval '120 seconds'
+    order by m.last_seen_at
+  loop
+    select * into target from public.rooms where id=candidate.room_id for update;
+    if not found or target.status<>'playing' then continue; end if;
+
+    select * into member_row from public.room_members
+    where room_id=candidate.room_id and user_id=candidate.user_id for update;
+    if not found or member_row.is_withdrawn
+       or member_row.last_seen_at >= clock_timestamp()-interval '120 seconds' then
+      continue;
+    end if;
+
+    update public.room_members set is_withdrawn=true,is_ready=false
+    where room_id=candidate.room_id and user_id=candidate.user_id and not is_withdrawn;
+    if not found then continue; end if;
+    expired_count := expired_count+1;
+
+    select count(*) into active_count from public.room_members
+    where room_id=candidate.room_id and not is_withdrawn;
+    if active_count<=1 then
+      perform public.settle_scrabble_room(
+        candidate.room_id,null,
+        case when active_count=0 then 'all_disconnected' else 'disconnect_last_player' end
+      );
+      continue;
+    end if;
+
+    player_ids := target.game_state->'player_ids';
+    player_count := case when jsonb_typeof(player_ids)='array'
+      then jsonb_array_length(player_ids) else 0 end;
+    current_index := coalesce((target.game_state->>'turn_index')::integer,-1);
+    next_index := current_index;
+    next_user := null;
+    new_host := null;
+
+    if player_count>0 and current_index>=0 and current_index<player_count
+       and player_ids->>current_index=candidate.user_id::text then
+      for step in 1..player_count loop
+        next_index := mod(current_index+step,player_count);
+        next_user := (player_ids->>next_index)::uuid;
+        if exists(select 1 from public.room_members
+          where room_id=candidate.room_id and user_id=next_user and not is_withdrawn) then
+          exit;
+        end if;
+        next_user := null;
+      end loop;
+      if next_user is null then next_index:=current_index; end if;
+    end if;
+
+    if target.host_id=candidate.user_id then
+      select user_id into new_host from public.room_members
+      where room_id=candidate.room_id and not is_withdrawn order by seat limit 1;
+    end if;
+
+    next_log := coalesce(target.game_state->'log','[]'::jsonb)
+      || jsonb_build_array(jsonb_build_object(
+        'type','disconnect_expired','user_id',candidate.user_id,
+        'grace_seconds',120,'at',clock_timestamp()
+      ));
+
+    update public.rooms
+    set host_id=coalesce(new_host,host_id),
+        game_state=target.game_state || jsonb_build_object(
+          'turn_index',next_index,
+          'revision',coalesce((target.game_state->>'revision')::integer,0)+1,
+          'log',next_log
+        ),
+        updated_at=clock_timestamp()
+    where id=candidate.room_id;
+  end loop;
+  return expired_count;
+end;
+$function$;
+revoke all on function public.expire_scrabble_disconnects() from public,anon,authenticated,service_role;
+
+select cron.schedule(
+  'scrabble-reconnect-grace-expiry',
+  '30 seconds',
+  'select public.expire_scrabble_disconnects();'
+);
