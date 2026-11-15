@@ -97,11 +97,16 @@ test('in-app notifications are private, event-driven, and readable through realt
   assert.ok(schema.includes('create trigger notify_scrabble_friend_request'));
   assert.ok(schema.includes('create trigger notify_scrabble_room_invite'));
   assert.ok(schema.includes('create trigger notify_scrabble_direct_message'));
+  assert.ok(schema.includes('create trigger notify_scrabble_turn_and_result'));
+  assert.ok(schema.includes('create trigger notify_scrabble_daily_reward'));
   assert.ok(schema.includes('grant execute on function public.mark_scrabble_notification_read(uuid) to authenticated'));
   const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
   assert.ok(cloud.includes("supabase.from('scrabble_notifications')"));
   assert.ok(cloud.includes("table:'scrabble_notifications'"));
   assert.ok(cloud.includes("supabase.rpc('mark_scrabble_notification_read'"));
+  assert.ok(cloud.includes('turnNotice'));
+  assert.ok(cloud.includes('resultNotice'));
+  assert.ok(cloud.includes('rewardNotice'));
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
   assert.ok(dashboard.includes("'notifications'].includes(section)"));
   const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
