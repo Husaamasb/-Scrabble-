@@ -79,3 +79,8 @@ Completed online matches are settled server-side. Final scores determine wins, d
 
 
 The online section includes global, weekly, monthly, Arabic-game, and English-game XP leaderboards. Period rankings use privacy-filtered aggregate records; raw match history remains private.
+
+
+### Daily challenges
+- Daily challenge progress is generated from verified match-result records on the server (play a match, win a match, score at least 100 points in a match).
+- Rewards are claimed once per user per UTC day through an authenticated database function; clients cannot set their own progress or reward amounts.
