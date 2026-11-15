@@ -56,5 +56,6 @@ test('iOS simulator workflow builds the Capacitor app on macOS without claiming 
   assert.match(workflow,/CODE_SIGNING_ALLOWED=NO/);
   assert.match(workflow,/Scrabble-iOS-Simulator\.zip/);
   assert.match(workflow,/actions\/upload-artifact@v4/);
+  const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8');
   assert.match(readme,/unsigned simulator app/);
 });
