@@ -10,6 +10,11 @@ const BOT_WORDS={
  ar:'اب اخذ اذا ازر اسد اسم اكل ام امر امن انا انت اهل باب بحر بئر بيت تاج تام تين جمل جبل جيد حبر حجر حبل حرب حسن حصن حقل حلم حمد حوت خبر خبز خرج دخل درس درب درع ذهب ذيل ربح رعد رمل روح زاد زار زهر زيت سار سبب سحر سحب سرق سطر سفر سهل سمع شجر شمس صبر صخر صبح صدر صيد ضرب طبع طير ظهر عجب عسل عمل عمر عين غاب غرف غرس غزل فاز فتح فجر فكر فلك فهم فوز قلب قلم قمر كاس كتب كلب كلم كمل كنز لعب لحم ليل لون مال مات ملك ملح منع موت نار نجم نهر نور نوم هرب هدى هزم ورد وعد وقت ولد يوم'.split(' ')
 };
 
+export const OFFLINE_WORDS = Object.freeze({
+ en: new Set(BOT_WORDS.en),
+ ar: new Set(BOT_WORDS.ar),
+});
+
 /** Find legal placements from the built-in candidate vocabulary. */
 export function findBotMoves(session, vocabulary=BOT_WORDS[session.language]||[]) {
  const rack=session.players[session.currentPlayer].rack, moves=[];
