@@ -49,7 +49,7 @@ export default function CloudDashboard({section,language,dark,onDark,onLanguage,
  useEffect(()=>{if(!user?.id)return;const channel=supabase.channel('scrabble:online',{config:{presence:{key:user.id}}}).on('presence',{event:'sync'},()=>{const state=channel.presenceState();setOnline(Object.values(state).flat().filter(p=>p.user_id!==user.id));}).subscribe(async status=>{if(status==='SUBSCRIBED'){await channel.track({user_id:user.id,username:profile?.username||user.email?.split('@')[0]||'Player',public_id:profile?.public_id||''});}});return()=>{supabase.removeChannel(channel);};},[user?.id,profile?.username,profile?.public_id]);
  useEffect(()=>{
   if(!quickMatchMode||!user?.id||!activeRoom?.id||activeRoom.status!=='waiting'||activeRoom.host_id!==user.id||busy)return;
-  const activeMembers=roomMembers.filter(member=>!member.is_withdrawn);
+  const activeMembers=roomMembers.filter(member=>member.room_id===activeRoom.id&&!member.is_withdrawn);
   if(activeMembers.length!==2||activeMembers.some(member=>!member.is_ready))return;
   let live=true;
   const begin=async()=>{
