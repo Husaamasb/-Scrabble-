@@ -255,3 +255,18 @@ test('room invites are included in Supabase realtime publication',()=>{
   assert.ok(cloud.includes("table:'room_invites'"));
   assert.ok(cloud.includes("filter:'receiver_id=eq.'+user.id"));
 });
+
+
+test('room host can start a rematch with the same active players and match rules',()=>{
+  assert.ok(schema.includes('create or replace function public.rematch_scrabble_room(target_room uuid)'));
+  assert.ok(schema.includes("previous.status <> 'finished'"));
+  assert.ok(schema.includes("previous.host_id <> auth.uid()"));
+  assert.ok(schema.includes('previous.max_players, previous.end_condition, previous.language'));
+  assert.ok(schema.includes('not is_withdrawn'));
+  assert.ok(schema.includes('revoke all on function public.rematch_scrabble_room(uuid) from public, anon'));
+  assert.ok(schema.includes('grant execute on function public.rematch_scrabble_room(uuid) to authenticated'));
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("supabase.rpc('rematch_scrabble_room'"));
+  assert.ok(cloud.includes('onClick={rematchRoom}'));
+  assert.ok(cloud.includes('activeRoom.host_id===user.id&&<button type="button" disabled={busy} onClick={rematchRoom}>'));
+});
