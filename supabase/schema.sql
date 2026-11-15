@@ -2113,3 +2113,133 @@ begin
    alter publication supabase_realtime add table public.scrabble_room_removal_ballots;
  end if;
 end $$;
+
+
+-- Account-backed single-elimination tournaments.
+create table if not exists public.scrabble_tournaments (
+ id uuid primary key default gen_random_uuid(),
+ owner_id uuid not null references public.profiles(id) on delete cascade,
+ name text not null check(char_length(name) between 3 and 48),
+ language text not null check(language in ('ar','en')),
+ max_players integer not null check(max_players in (4,8,16)),
+ status text not null default 'registration' check(status in ('registration','ongoing','completed','cancelled')),
+ champion_id uuid references public.profiles(id) on delete set null,
+ created_at timestamptz not null default now(), started_at timestamptz, completed_at timestamptz
+);
+create index if not exists scrabble_tournaments_status_created_idx on public.scrabble_tournaments(status,created_at desc);
+create table if not exists public.scrabble_tournament_players (
+ tournament_id uuid not null references public.scrabble_tournaments(id) on delete cascade,
+ user_id uuid not null references public.profiles(id) on delete cascade,
+ joined_at timestamptz not null default now(), seed integer,
+ primary key(tournament_id,user_id)
+);
+create table if not exists public.scrabble_tournament_matches (
+ id uuid primary key default gen_random_uuid(),
+ tournament_id uuid not null references public.scrabble_tournaments(id) on delete cascade,
+ round_number integer not null check(round_number>0), match_number integer not null check(match_number>0),
+ player1_id uuid references public.profiles(id) on delete set null,
+ player2_id uuid references public.profiles(id) on delete set null,
+ winner_id uuid references public.profiles(id) on delete set null,
+ status text not null default 'scheduled' check(status in ('scheduled','completed')),
+ created_at timestamptz not null default now(),
+ unique(tournament_id,round_number,match_number),
+ check(player1_id is null or player2_id is null or player1_id<>player2_id)
+);
+create index if not exists scrabble_tournament_players_user_idx on public.scrabble_tournament_players(user_id,tournament_id);
+create index if not exists scrabble_tournament_matches_lookup_idx on public.scrabble_tournament_matches(tournament_id,round_number,match_number);
+alter table public.scrabble_tournaments enable row level security;
+alter table public.scrabble_tournament_players enable row level security;
+alter table public.scrabble_tournament_matches enable row level security;
+revoke all on public.scrabble_tournaments,public.scrabble_tournament_players,public.scrabble_tournament_matches from public,anon,authenticated;
+grant select on public.scrabble_tournaments,public.scrabble_tournament_players,public.scrabble_tournament_matches to authenticated;
+drop policy if exists "signed in users can read tournaments" on public.scrabble_tournaments;
+create policy "signed in users can read tournaments" on public.scrabble_tournaments for select to authenticated using(true);
+drop policy if exists "signed in users can read tournament players" on public.scrabble_tournament_players;
+create policy "signed in users can read tournament players" on public.scrabble_tournament_players for select to authenticated using(true);
+drop policy if exists "signed in users can read tournament matches" on public.scrabble_tournament_matches;
+create policy "signed in users can read tournament matches" on public.scrabble_tournament_matches for select to authenticated using(true);
+
+create or replace function public.create_scrabble_tournament(tournament_name text, game_language text, player_limit integer)
+returns uuid language plpgsql security definer set search_path=''
+as $function$
+declare uid uuid:=auth.uid(); tid uuid;
+begin
+ if uid is null then raise exception 'Sign in required'; end if;
+ if char_length(trim(coalesce(tournament_name,''))) not between 3 and 48 then raise exception 'Tournament name must be 3 to 48 characters'; end if;
+ if game_language not in ('ar','en') or player_limit not in (4,8,16) then raise exception 'Invalid tournament settings'; end if;
+ insert into public.scrabble_tournaments(owner_id,name,language,max_players) values(uid,trim(tournament_name),game_language,player_limit) returning id into tid;
+ insert into public.scrabble_tournament_players(tournament_id,user_id,seed) values(tid,uid,1);
+ return tid;
+end;
+$function$;
+create or replace function public.join_scrabble_tournament(target_tournament uuid)
+returns void language plpgsql security definer set search_path=''
+as $function$
+declare uid uuid:=auth.uid(); target public.scrabble_tournaments; n integer;
+begin
+ if uid is null then raise exception 'Sign in required'; end if;
+ select * into target from public.scrabble_tournaments where id=target_tournament for update;
+ if not found or target.status<>'registration' then raise exception 'Registration is closed'; end if;
+ if exists(select 1 from public.scrabble_tournament_players where tournament_id=target_tournament and user_id=uid) then return; end if;
+ select count(*) into n from public.scrabble_tournament_players where tournament_id=target_tournament;
+ if n>=target.max_players then raise exception 'Tournament is full'; end if;
+ insert into public.scrabble_tournament_players(tournament_id,user_id,seed) values(target_tournament,uid,n+1);
+end;
+$function$;
+create or replace function public.start_scrabble_tournament(target_tournament uuid)
+returns void language plpgsql security definer set search_path=''
+as $function$
+declare target public.scrabble_tournaments; entrants uuid[]; n integer; i integer; round_size integer:=1; p1 uuid; p2 uuid;
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select * into target from public.scrabble_tournaments where id=target_tournament for update;
+ if not found or target.owner_id<>auth.uid() then raise exception 'Only the tournament host can start it'; end if;
+ if target.status<>'registration' then raise exception 'Tournament already started'; end if;
+ select array_agg(user_id order by joined_at,user_id),count(*) into entrants,n from public.scrabble_tournament_players where tournament_id=target_tournament;
+ if n<2 then raise exception 'At least two players are required'; end if;
+ while round_size<n loop round_size:=round_size*2; end loop;
+ for i in 1..(round_size/2) loop
+  p1:=entrants[(i*2)-1]; p2:=entrants[i*2];
+  if p1 is null and p2 is null then continue; end if;
+  insert into public.scrabble_tournament_matches(tournament_id,round_number,match_number,player1_id,player2_id,winner_id,status)
+  values(target_tournament,1,i,p1,p2,case when p1 is null or p2 is null then coalesce(p1,p2) else null end,case when p1 is null or p2 is null then 'completed' else 'scheduled' end);
+ end loop;
+ update public.scrabble_tournaments set status='ongoing',started_at=now() where id=target_tournament;
+end;
+$function$;
+create or replace function public.report_scrabble_tournament_match(target_match uuid, winning_player uuid)
+returns void language plpgsql security definer set search_path=''
+as $function$
+declare m public.scrabble_tournament_matches; t public.scrabble_tournaments; winners uuid[]; remaining integer; next_round integer; i integer; total_winners integer; p1 uuid; p2 uuid;
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select * into m from public.scrabble_tournament_matches where id=target_match for update;
+ if not found then raise exception 'Match not found'; end if;
+ select * into t from public.scrabble_tournaments where id=m.tournament_id for update;
+ if t.owner_id<>auth.uid() then raise exception 'Only the tournament host can record results'; end if;
+ if t.status<>'ongoing' or m.status<>'scheduled' then raise exception 'Match is not awaiting a result'; end if;
+ if winning_player is null or (winning_player<>m.player1_id and winning_player<>m.player2_id) then raise exception 'Winner must be one of the match players'; end if;
+ update public.scrabble_tournament_matches set winner_id=winning_player,status='completed' where id=target_match;
+ select count(*) into remaining from public.scrabble_tournament_matches where tournament_id=m.tournament_id and round_number=m.round_number and status<>'completed';
+ if remaining>0 then return; end if;
+ select array_agg(winner_id order by match_number),count(*) into winners,total_winners from public.scrabble_tournament_matches where tournament_id=m.tournament_id and round_number=m.round_number and winner_id is not null;
+ if total_winners=1 then
+  update public.scrabble_tournaments set status='completed',champion_id=winners[1],completed_at=now() where id=m.tournament_id;
+  return;
+ end if;
+ next_round:=m.round_number+1;
+ for i in 1..((total_winners+1)/2) loop
+  p1:=winners[(i*2)-1]; p2:=winners[i*2];
+  insert into public.scrabble_tournament_matches(tournament_id,round_number,match_number,player1_id,player2_id,winner_id,status)
+  values(m.tournament_id,next_round,i,p1,p2,case when p1 is null or p2 is null then coalesce(p1,p2) else null end,case when p1 is null or p2 is null then 'completed' else 'scheduled' end);
+ end loop;
+end;
+$function$;
+revoke all on function public.create_scrabble_tournament(text,text,integer) from public,anon;
+revoke all on function public.join_scrabble_tournament(uuid) from public,anon;
+revoke all on function public.start_scrabble_tournament(uuid) from public,anon;
+revoke all on function public.report_scrabble_tournament_match(uuid,uuid) from public,anon;
+grant execute on function public.create_scrabble_tournament(text,text,integer) to authenticated;
+grant execute on function public.join_scrabble_tournament(uuid) to authenticated;
+grant execute on function public.start_scrabble_tournament(uuid) to authenticated;
+grant execute on function public.report_scrabble_tournament_match(uuid,uuid) to authenticated;
