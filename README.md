@@ -38,7 +38,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Friend QR sharing and image-based QR scanning (on browsers with BarcodeDetector), with manual player-ID search as a fallback.
 - Account-backed tournament lobby with 4/8/16-player registration, host-controlled starts, single-elimination rounds, automatic byes, and progression from completed room match results.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated word placement, dictionary checks, scoring, rack refill, pass, exchange, and endgame settlement.
-- Capacitor Android/iOS support plus an automated macOS GitHub Actions build for the iOS Simulator.
+- Capacitor Android/iOS support plus automated GitHub Actions builds for an Android debug APK and an unsigned iOS Simulator app.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
 
 ## Still required for a complete release
