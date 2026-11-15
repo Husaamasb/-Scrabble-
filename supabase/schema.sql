@@ -16,7 +16,7 @@ create table if not exists public.profiles (
 create unique index if not exists profiles_username_lower_idx on public.profiles (lower(username));
 
 create or replace function public.create_profile_for_new_user()
-returns trigger language plpgsql security definer set search_path = public
+returns trigger language plpgsql security definer SET search_path = ''
 as $func$
 declare desired_name text; candidate_name text;
 begin
@@ -54,7 +54,7 @@ create table if not exists public.friendships (
 );
 
 create or replace function public.accept_friend_request(request_id uuid)
-returns void language plpgsql security definer set search_path = public
+returns void language plpgsql security definer SET search_path = ''
 as $$
 declare req public.friend_requests;
 begin
@@ -118,7 +118,7 @@ create table if not exists public.room_invites (
 );
 
 create or replace function public.join_room_by_code(room_code text)
-returns uuid language plpgsql security definer set search_path = public
+returns uuid language plpgsql security definer SET search_path = ''
 as $$
 declare target public.rooms; next_seat int; uid uuid := auth.uid();
 begin
@@ -134,7 +134,7 @@ end;
 $$;
 
 create or replace function public.create_scrabble_room(room_name text, public_room boolean, player_limit int, game_language text)
-returns setof public.rooms language plpgsql security definer set search_path = public
+returns setof public.rooms language plpgsql security definer SET search_path = ''
 as $
 declare created public.rooms;
 begin
@@ -151,7 +151,7 @@ $;
 create or replace function public.create_scrabble_room_with_rules(
   room_name text, public_room boolean, player_limit int, game_language text, match_end_mode text
 )
-returns setof public.rooms language plpgsql security definer set search_path = public
+returns setof public.rooms language plpgsql security definer SET search_path = ''
 as $$
 declare created public.rooms;
 begin
@@ -168,7 +168,7 @@ end;
 $$;
 
 create or replace function public.is_scrabble_room_member(target_room uuid)
-returns boolean language sql stable security definer set search_path = public
+returns boolean language sql stable security definer SET search_path = ''
 as $func$ select exists(select 1 from public.room_members where room_id=target_room and user_id=auth.uid()) $func$;
 
 alter table public.profiles enable row level security;
@@ -270,7 +270,7 @@ end $$;
 
 -- Room readiness and host-controlled start.
 create or replace function public.set_scrabble_ready(target_room uuid, ready_state boolean)
-returns void language plpgsql security definer set search_path = public
+returns void language plpgsql security definer SET search_path = ''
 as $$
 begin
   if auth.uid() is null or not public.is_scrabble_room_member(target_room) then raise exception 'Room membership required'; end if;
@@ -279,7 +279,7 @@ end;
 $$;
 
 create or replace function public.start_scrabble_room(target_room uuid)
-returns public.rooms language plpgsql security definer set search_path = public
+returns public.rooms language plpgsql security definer SET search_path = ''
 as $$
 declare target public.rooms; member_count int; ready_count int;
 begin
@@ -356,7 +356,7 @@ create or replace function public.submit_scrabble_turn(
 returns public.rooms
 language plpgsql
 security definer
-set search_path = public
+SET search_path = ''
 as $$
 declare
   target public.rooms;
@@ -434,7 +434,7 @@ create or replace function public.finish_scrabble_room(target_room uuid)
 returns public.rooms
 language plpgsql
 security definer
-set search_path = public
+SET search_path = ''
 as $$
 declare target public.rooms;
 begin
@@ -547,7 +547,7 @@ create or replace function public.withdraw_scrabble_room(target_room uuid)
 returns public.rooms
 language plpgsql
 security definer
-set search_path = 'public'
+SET search_path = ''
 as $function$
 declare
   target public.rooms;
@@ -1016,7 +1016,7 @@ create or replace function public.pass_scrabble_turn(target_room uuid, expected_
  RETURNS rooms
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path = ''
 AS $$
 declare
   target public.rooms;
@@ -1115,7 +1115,7 @@ create or replace function public.exchange_scrabble_tiles(target_room uuid, expe
  RETURNS rooms
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path = ''
 AS $exchange$
 declare
   target public.rooms;
@@ -1798,7 +1798,7 @@ revoke all on function public.mark_scrabble_notification_read(uuid) from public,
 grant execute on function public.mark_scrabble_notification_read(uuid) to authenticated;
 
 create or replace function public.emit_scrabble_notification()
-returns trigger language plpgsql security definer set search_path = public
+returns trigger language plpgsql security definer SET search_path = ''
 as $$
 declare target_user uuid; actor uuid; event_kind text;
 begin
@@ -1835,7 +1835,7 @@ alter table public.scrabble_notifications drop constraint if exists scrabble_not
 alter table public.scrabble_notifications add constraint scrabble_notifications_kind_check
  check (kind in ('friend_request','room_invite','direct_message','turn_started','match_result','daily_reward'));
 create or replace function public.notify_scrabble_room_state()
-returns trigger language plpgsql security definer set search_path=public
+returns trigger language plpgsql security definer SET search_path = ''
 as $$
 declare turn_user uuid; member_row record;
 begin
@@ -1867,7 +1867,7 @@ create trigger notify_scrabble_turn_and_result after update of status,game_state
 for each row execute function public.notify_scrabble_room_state();
 
 create or replace function public.notify_scrabble_daily_reward()
-returns trigger language plpgsql security definer set search_path=public
+returns trigger language plpgsql security definer SET search_path = ''
 as $$
 begin
  if old.claimed_at is null and new.claimed_at is not null then
@@ -1915,7 +1915,7 @@ create policy "players read own scrabble wallet" on public.scrabble_wallets for 
 drop policy if exists "players read own scrabble inventory" on public.scrabble_inventory;
 create policy "players read own scrabble inventory" on public.scrabble_inventory for select to authenticated using((select auth.uid())=user_id);
 create or replace function public.purchase_scrabble_store_item(target_item text)
-returns integer language plpgsql security definer set search_path=public
+returns integer language plpgsql security definer SET search_path = ''
 as $$
 declare uid uuid:=auth.uid(); item public.scrabble_store_catalog; balance integer;
 begin
@@ -1952,7 +1952,7 @@ drop policy if exists "players read their own gifts" on public.scrabble_gifts;
 create policy "players read their own gifts" on public.scrabble_gifts for select to authenticated
 using((select auth.uid())=sender_id or (select auth.uid())=recipient_id);
 create or replace function public.send_scrabble_gift(recipient uuid,target_item text)
-returns uuid language plpgsql security definer set search_path=public
+returns uuid language plpgsql security definer SET search_path = ''
 as $$
 declare uid uuid:=auth.uid(); gift_id uuid;
 begin
@@ -1970,7 +1970,7 @@ $$;
 revoke all on function public.send_scrabble_gift(uuid,text) from public,anon;
 grant execute on function public.send_scrabble_gift(uuid,text) to authenticated;
 create or replace function public.resolve_scrabble_gift(target_gift uuid,accept_gift boolean)
-returns void language plpgsql security definer set search_path=public
+returns void language plpgsql security definer SET search_path = ''
 as $$
 declare uid uuid:=auth.uid(); gift public.scrabble_gifts;
 begin
@@ -1992,7 +1992,7 @@ alter table public.scrabble_notifications drop constraint if exists scrabble_not
 alter table public.scrabble_notifications add constraint scrabble_notifications_kind_check
 check(kind in ('friend_request','room_invite','direct_message','turn_started','match_result','daily_reward','gift_received'));
 create or replace function public.notify_scrabble_gift_received()
-returns trigger language plpgsql security definer set search_path=public
+returns trigger language plpgsql security definer SET search_path = ''
 as $$
 begin
  insert into public.scrabble_notifications(user_id,actor_id,kind,reference_id)
@@ -2708,7 +2708,7 @@ create or replace function public.rematch_scrabble_room(target_room uuid)
 returns public.rooms
 language plpgsql
 security definer
-set search_path = public
+SET search_path = ''
 as $function$
 declare
   previous public.rooms;
