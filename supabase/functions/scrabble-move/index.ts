@@ -159,7 +159,51 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
   if (!response.ok) throw new Error("Dictionary service returned " + response.status + ".");
   const data = await response.json();
   const page = data?.query?.pages?.[0];
-  const valid = Boolean(page && !page.missing && !page.invalid);
+  let valid = Boolean(page && !page.missing && !page.invalid);
+
+  // If Wiktionary has no exact page, ask the configured AI lexicon reviewer.
+  // The key is server-only; the browser never receives it.
+  const openAiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!valid && openAiKey) {
+    try {
+      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + openAiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: Deno.env.get("OPENAI_DICTIONARY_MODEL") || "gpt-4.1-mini",
+          temperature: 0,
+          max_completion_tokens: 120,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: "You are a conservative Scrabble dictionary adjudicator. Decide whether the exact supplied string is a recognized standalone lexical word in the specified language. Accept standard dictionary headwords and ordinary inflected forms. Reject proper names, abbreviations, phrases, typos, invented strings, and uncertain cases. Do not translate or repair the spelling. Return only JSON with one boolean field: valid.",
+            },
+            {
+              role: "user",
+              content: JSON.stringify({ language: language === "ar" ? "Arabic" : "English", exact_word: normalized }),
+            },
+          ],
+        }),
+      });
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        const content = aiData?.choices?.[0]?.message?.content;
+        if (typeof content === "string") {
+          const verdict = JSON.parse(content);
+          valid = verdict?.valid === true;
+        }
+      } else {
+        console.error("AI dictionary request failed:", aiResponse.status);
+      }
+    } catch (aiError) {
+      console.error("AI dictionary fallback failed:", aiError);
+    }
+  }
+
   await admin.from("scrabble_dictionary_cache").upsert({
     language,
     word: normalized,
