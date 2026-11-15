@@ -25,7 +25,15 @@ test('the app requires an authenticated Supabase session before showing any play
  assert.ok(app.includes("import { isCloudConfigured, supabase } from './cloud/supabase.js'"));
  assert.ok(app.includes("supabase.auth.getSession()"));
  assert.ok(app.includes("supabase.auth.onAuthStateChange"));
- assert.ok(app.includes("if(!authSession?.user)return"));
+ assert.ok(app.includes("if(!authSession?.user||authRecovery)return"));
+ assert.ok(app.includes("setAuthRecovery(true)"));
+ assert.ok(app.includes("event==='PASSWORD_RECOVERY'"));
+ assert.ok(app.includes("event==='USER_UPDATED'"));
  assert.ok(app.includes('<CloudDashboard section="account"'));
- assert.ok(app.indexOf("if(!authSession?.user)return")<app.indexOf("if(localMode)return"));
+ assert.ok(app.indexOf("if(!authSession?.user||authRecovery)return")<app.indexOf("if(localMode)return"));
+ assert.ok(cloud.includes("const address=email.trim()"));
+ assert.ok(cloud.includes("Enter your email address first"));
+ assert.ok(cloud.includes("redirectTo:window.location.origin+import.meta.env.BASE_URL"));
+ assert.ok(cloud.includes("provider is not enabled"));
+ assert.ok(cloud.includes("Google and Apple sign-in require provider credentials"));
 });
