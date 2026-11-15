@@ -14,7 +14,7 @@ test('guest mode is available without a cloud account and bypasses the auth gate
 });
 
 test('offline dictionary accepts bundled exact words when no network fetch exists',async()=>{
-  const validate=createWiktionaryValidator(undefined);
+  const validate=createWiktionaryValidator(null);
   assert.equal(await validate({word:'cat',language:'en'}),true);
   assert.equal(await validate({word:'كتاب',language:'ar'}),true);
   assert.equal(await validate({word:'notaword',language:'en'}),false);
