@@ -88,3 +88,20 @@ test('daily challenges are driven by server match results and claim XP through a
   assert.ok(cloud.includes("claimDailyChallenge"));
   assert.ok(cloud.includes("supabase.rpc('claim_scrabble_daily_challenge'"));
 });
+
+test('in-app notifications are private, event-driven, and readable through realtime',()=>{
+  assert.ok(schema.includes('create table if not exists public.scrabble_notifications'));
+  assert.ok(schema.includes('players read their own notifications'));
+  assert.ok(schema.includes('create trigger notify_scrabble_friend_request'));
+  assert.ok(schema.includes('create trigger notify_scrabble_room_invite'));
+  assert.ok(schema.includes('create trigger notify_scrabble_direct_message'));
+  assert.ok(schema.includes('grant execute on function public.mark_scrabble_notification_read(uuid) to authenticated'));
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("supabase.from('scrabble_notifications')"));
+  assert.ok(cloud.includes("table:'scrabble_notifications'"));
+  assert.ok(cloud.includes("supabase.rpc('mark_scrabble_notification_read'"));
+  const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
+  assert.ok(dashboard.includes("'notifications'].includes(section)"));
+  const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
+  assert.ok(app.includes("id:'notifications'"));
+});
