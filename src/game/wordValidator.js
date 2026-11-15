@@ -1,12 +1,17 @@
+import { OFFLINE_WORDS } from './bot.js';
+
 /**
  * Exact-entry dictionary lookup through Wiktionary's public MediaWiki API.
+ * When the network is unavailable, use the bundled offline lexicon only.
  * It checks entries only; it never generates or guesses words.
  */
 export function createWiktionaryValidator(fetchImpl = globalThis.fetch) {
   return async ({ word, language }) => {
-    if (typeof fetchImpl !== 'function') throw new Error('dictionary-fetch-unavailable');
     const lang = language === 'ar' ? 'ar' : language === 'en' ? 'en' : null;
     if (!lang || typeof word !== 'string' || !word.trim()) return false;
+    const normalizedWord = word.normalize('NFC').trim();
+    const offlineMatch = () => OFFLINE_WORDS[lang].has(lang === 'en' ? normalizedWord.toLowerCase() : normalizedWord);
+    if (typeof fetchImpl !== 'function') return offlineMatch();
     const cacheKey = `scrabble:dictionary:${lang}:${word.trim()}`;
     try { if (globalThis.localStorage?.getItem(cacheKey) === 'valid') return true; } catch {}
     const endpoint = new URL(`https://${lang}.wiktionary.org/w/api.php`);
@@ -14,16 +19,21 @@ export function createWiktionaryValidator(fetchImpl = globalThis.fetch) {
       action: 'query',
       format: 'json',
       formatversion: '2',
-      titles: word.trim(),
+      titles: normalizedWord,
       origin: '*'
     }).toString();
-    const response = await fetchImpl(endpoint.toString(), { headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error(`dictionary-http-${response.status}`);
-    const data = await response.json();
-    const page = data?.query?.pages?.[0];
-    const valid = Boolean(page && !page.missing && !page.invalid);
-    if (valid) { try { globalThis.localStorage?.setItem(cacheKey, 'valid'); } catch {} }
-    return valid;
+    try {
+      const response = await fetchImpl(endpoint.toString(), { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`dictionary-http-${response.status}`);
+      const data = await response.json();
+      const page = data?.query?.pages?.[0];
+      const valid = Boolean(page && !page.missing && !page.invalid);
+      if (valid) { try { globalThis.localStorage?.setItem(cacheKey, 'valid'); } catch {} }
+      return valid;
+    } catch (error) {
+      if (offlineMatch()) return true;
+      throw error;
+    }
   };
 }
 
