@@ -2532,3 +2532,28 @@ begin
  update public.scrabble_tournaments set status='ongoing',started_at=now() where id=target_tournament;
 end;
 $function$;
+
+
+
+-- Admin-only tournament schedule, rewards, and spectator settings.
+drop policy if exists "admins update tournament details" on public.scrabble_tournaments;
+create policy "admins update tournament details" on public.scrabble_tournaments
+for update to authenticated
+using(public.is_scrabble_admin() and status='registration')
+with check(public.is_scrabble_admin() and status='registration');
+
+create or replace function public.admin_set_scrabble_tournament_details(
+ target_tournament uuid, starts_at timestamptz, reward_xp integer,
+ reward_coins integer, allow_spectators boolean
+) returns void language plpgsql security invoker set search_path=''
+as $function$
+begin
+ if auth.uid() is null or not public.is_scrabble_admin() then raise exception 'Administrator access required'; end if;
+ if reward_xp not between 0 and 100000 or reward_coins not between 0 and 100000 then raise exception 'Tournament rewards are out of range'; end if;
+ update public.scrabble_tournaments set scheduled_at=starts_at,prize_xp=reward_xp,prize_coins=reward_coins,spectators_enabled=coalesce(allow_spectators,true)
+ where id=target_tournament and status='registration';
+ if not found then raise exception 'Only tournaments accepting registration can be edited'; end if;
+end;
+$function$;
+revoke all on function public.admin_set_scrabble_tournament_details(uuid,timestamptz,integer,integer,boolean) from public,anon;
+grant execute on function public.admin_set_scrabble_tournament_details(uuid,timestamptz,integer,integer,boolean) to authenticated;
