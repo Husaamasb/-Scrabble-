@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.husaamasb.scrabble',
-  appName: 'Scrabble',
+  appName: 'سكرابل العربية',
   webDir: 'dist',
   bundledWebRuntime: false,
   ios: {
