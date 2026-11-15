@@ -2760,6 +2760,12 @@ begin
     raise exception 'At least two active players are required for a rematch';
   end if;
 
+  -- Notify the other active players so private rematches are visible to them too.
+  insert into public.room_invites(room_id, sender_id, receiver_id)
+  select created.id, auth.uid(), user_id
+  from public.room_members
+  where room_id = created.id and user_id <> auth.uid();
+
   return created;
 end;
 $function$;
