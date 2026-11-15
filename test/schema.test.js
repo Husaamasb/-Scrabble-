@@ -230,3 +230,20 @@ test('room removal votes require active players, one ballot each, and a strict m
   assert.ok(cloud.includes("table:'scrabble_room_removal_ballots'"));
   assert.ok(cloud.includes('voteYes'));
 });
+
+
+test('private rooms require an accepted invite and invite visibility is scoped to invitees',()=>{
+  assert.match(schema,/if not target\.is_public and not exists \([\s\S]*?status = 'accepted'[\s\S]*?\) then[\s\S]*?An accepted room invitation is required/);
+  assert.match(schema,/ri\.receiver_id = auth\.uid\(\)[\s\S]*?ri\.status in \('pending', 'accepted'\)/);
+  assert.match(schema,/f\.user_low = auth\.uid\(\) and f\.user_high = receiver_id/);
+  assert.match(schema,/revoke update on public\.room_invites from authenticated/);
+  assert.match(schema,/grant update\(status\) on public\.room_invites to authenticated/);
+  assert.match(schema,/one_pending_room_invite_per_recipient/);
+});
+
+test('room invitations update live for the intended recipient only',()=>{
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("table:'room_invites'"));
+  assert.ok(cloud.includes("filter:'receiver_id=eq.'+user.id"));
+  assert.ok(cloud.includes('setIncomingInvites'));
+});
