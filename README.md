@@ -25,7 +25,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Responsive Arabic/English interface and 15×15 board.
 - Scrabble premium-square scoring, cross-word scoring, blank-tile zero value, and 50-point seven-tile bonus.
 - User-specified Arabic (110) and English (100) tile sets.
-- Interactive wooden chest with a hinged lid, a single row of the active player's tiles, selection highlights, rack refill, undo, and tile exchange. The computer's rack stays hidden during bot turns.
+- Interactive wooden chest with a hinged lid, one horizontally scrollable row of face-down wooden tiles that flip to reveal on tap, a remaining-tile counter, selection highlights, rack refill, undo, and tile exchange. The computer's rack stays hidden during bot turns.
 - AI-first Arabic/English dictionary for authenticated cloud play: server-side admin overrides, trusted AI verdict cache, then OpenAI Responses API word review. Wiktionary is a fallback only if the AI provider is unavailable; guest/offline play uses exact Wiktionary checks. Provider failures never auto-approve words.
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
@@ -34,7 +34,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
-- Supabase integration: email/password sign-up and login, six-digit email verification for new accounts, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
+- Supabase integration: email/password sign-up and login, six-digit email verification for new accounts, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured. Room hosts choose either classic Scrabble ending or ending as soon as the tile bag is empty; turn timers are disabled.
 - Friend QR sharing and image-based QR scanning (on browsers with BarcodeDetector), with manual player-ID search as a fallback.
 - Account-backed tournament lobby with 4/8/16-player registration, host-controlled starts, single-elimination rounds, automatic byes, and progression from completed room match results.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated word placement, dictionary checks, scoring, rack refill, pass, exchange, and endgame settlement.
@@ -47,7 +47,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Profile avatar selection and achievement badges are implemented; badges are currently calculated from profile totals rather than stored as permanent award records.
 - Complete end-to-end tests with at least two real players, including room reconnects, pass/exchange, match settlement, and automatic tournament advancement.
 - Verify a real authenticated AI dictionary request in the Supabase Edge Function logs; code and deployments are ready, but a live provider verdict has not yet been observed in the recent logs.
-- The owner account must be granted `scrabble_admin` in server-managed App Metadata before the admin dashboard is accessible. No account currently exists in this Supabase project, so this step waits for the owner to register.
+- The owner account must be granted `scrabble_admin` in server-managed App Metadata before the admin dashboard is accessible.
 - Final device-specific icon packaging and visual QA on real devices. **The approved artwork in `public/icon.svg` must remain unchanged.**
 - Live end-to-end verification requires real accounts; no real-user room, reconnect, or tournament test is claimed yet.
 - Signed Android/iOS store releases require real-device testing and platform signing. The Android artifact is a debug APK; the iOS Simulator artifact is unsigned and is not an installable iPhone IPA.
@@ -103,7 +103,7 @@ The online section includes global, weekly, monthly, Arabic-game, and English-ga
 
 ## Gameplay interface
 
-- The wooden letter chest is part of both local and online match screens. Its hinged lid opens and closes, with the active player's rack shown in one organized row. In bot matches, the computer's rack remains hidden. Online games never expose the server's hidden tile bag.
+- The wooden letter chest is part of both local and online match screens. Its hinged lid opens and closes; the active player's seven tiles sit in one horizontally scrollable row, face-down until individually flipped by tapping. In bot matches, the computer's rack remains hidden. Online games never expose the server's hidden tile bag.
 
 
 ## Account preferences and branding
