@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const schema=readFileSync(new URL('../supabase/schema.sql',import.meta.url),'utf8');
 const admin=readFileSync(new URL('../src/AdminPanel.jsx',import.meta.url),'utf8');
+const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
 test('admin access relies only on server-managed app_metadata and RLS',()=>{
  assert.ok(schema.includes("auth.jwt()->'app_metadata'->>'scrabble_admin'"));
  assert.ok(!schema.includes("auth.jwt()->'user_metadata'->>'scrabble_admin'"));
@@ -24,4 +25,9 @@ test('admins can manage schedule, prizes, and spectator access before tournament
  assert.ok(admin.includes("supabase.rpc('admin_set_scrabble_tournament_details'"));
  assert.ok(admin.includes('name="spectators_enabled"'));
  assert.ok(admin.includes('name="starts_at"'));
+});
+
+test('authorized administrators can navigate to the admin panel from their account',()=>{
+ assert.ok(cloud.includes("user?.app_metadata?.scrabble_admin===true&&<button type=\"button\" onClick={()=>onNavigate?.('admin')}>"));
+ assert.ok(cloud.includes("section==='admin'"));
 });
