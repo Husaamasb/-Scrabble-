@@ -1,0 +1,19 @@
+-- Add indexes for foreign-key columns identified by the Supabase performance advisor.
+create index if not exists idx_scrabble_dictionary_overrides_updated_by on public.scrabble_dictionary_overrides (updated_by);
+create index if not exists idx_scrabble_gifts_item_key on public.scrabble_gifts (item_key);
+create index if not exists idx_scrabble_gifts_recipient_id on public.scrabble_gifts (recipient_id);
+create index if not exists idx_scrabble_gifts_sender_id on public.scrabble_gifts (sender_id);
+create index if not exists idx_scrabble_inventory_item_key on public.scrabble_inventory (item_key);
+create index if not exists idx_scrabble_notifications_actor_id on public.scrabble_notifications (actor_id);
+create index if not exists idx_scrabble_player_reports_reporter_id on public.scrabble_player_reports (reporter_id);
+create index if not exists idx_scrabble_player_reports_reviewed_by on public.scrabble_player_reports (reviewed_by);
+create index if not exists idx_scrabble_player_reports_room_id on public.scrabble_player_reports (room_id);
+create index if not exists idx_scrabble_player_reports_target_user_id on public.scrabble_player_reports (target_user_id);
+create index if not exists idx_scrabble_room_removal_ballots_voter_id on public.scrabble_room_removal_ballots (voter_id);
+create index if not exists idx_scrabble_room_removal_votes_started_by on public.scrabble_room_removal_votes (started_by);
+create index if not exists idx_scrabble_room_removal_votes_target_user_id on public.scrabble_room_removal_votes (target_user_id);
+create index if not exists idx_scrabble_tournament_matches_player1_id on public.scrabble_tournament_matches (player1_id);
+create index if not exists idx_scrabble_tournament_matches_player2_id on public.scrabble_tournament_matches (player2_id);
+create index if not exists idx_scrabble_tournament_matches_winner_id on public.scrabble_tournament_matches (winner_id);
+create index if not exists idx_scrabble_tournaments_champion_id on public.scrabble_tournaments (champion_id);
+create index if not exists idx_scrabble_tournaments_owner_id on public.scrabble_tournaments (owner_id);
