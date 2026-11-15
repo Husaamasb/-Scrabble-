@@ -99,3 +99,14 @@ jobs:
           path: scrabble-emulator.png
           if-no-files-found: error
           retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Scrabble-Android-Startup-Diagnostics
+          path: |
+            android-logcat.txt
+            android-activity.txt
+            android-window.xml
+          if-no-files-found: warn
+          retention-days: 14
