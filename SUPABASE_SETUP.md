@@ -1,6 +1,6 @@
 # Supabase setup for Scrabble
 
-The repository now contains the browser client and database schema for accounts, profiles, friends, presence, rooms, and chat. The app does not connect to a shared database until you create a Supabase project and configure the public project URL and anon/publishable key.
+The repository contains the browser client and database schema for accounts, profiles, friends, presence, rooms, and chat. The Scrabble Supabase project is provisioned, the schema is installed, and the GitHub Pages workflow now reads the public configuration from `.env.production`.
 
 ## 1. Existing backend project
 
@@ -37,16 +37,9 @@ In **Authentication → Providers**, enable Google and/or Apple and enter the cr
 
 ## 4. Whenever the schema is updated in the repository, run the full current `supabase/schema.sql` again in SQL Editor. The added functions use `create or replace` and can be safely reapplied. This enables room readiness, host-controlled match start, and the private per-player room-state table. The private table uses Row Level Security so each player can read only their own row. Direct client insert/update access is revoked; trusted RPCs alone initialize and modify private racks. Hidden racks must never be stored in `rooms.game_state`. Premium squares are fixed by the standard board and cannot be edited in rooms. The private-state table is protected from browser writes. Server-side pass and exchange actions are implemented; word placement and synchronized scoring are still being built.
 
-5. Add the public project settings to GitHub Pages
+## 5. Production build configuration
 
-In the GitHub repository, open **Settings → Secrets and variables → Actions → Variables** and create:
-
-- `VITE_SUPABASE_URL`: the Project URL from Supabase → Project Settings → API.
-- `VITE_SUPABASE_ANON_KEY`: the anon/publishable key from the same page.
-
-These are public browser-client values protected by Supabase Row Level Security. **Never add a Supabase service_role key to this repository or browser app.**
-
-A push to `main` will rebuild and deploy GitHub Pages using these variables. If they are empty, the app intentionally shows a setup message instead of pretending cloud features are connected.
+The GitHub Pages workflow reads `.env.production` during `npm run build`. That file contains only the public project URL and publishable key. A push to `main` triggers the production build and Pages deployment. Never add a `service_role` or secret key to the repository or browser app.
 
 ## 6. Local development
 
