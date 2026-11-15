@@ -247,3 +247,11 @@ test('room invitations update live for the intended recipient only',()=>{
   assert.ok(cloud.includes("filter:'receiver_id=eq.'+user.id"));
   assert.ok(cloud.includes('setIncomingInvites'));
 });
+
+
+test('room invites are included in Supabase realtime publication',()=>{
+  assert.match(schema,/alter publication supabase_realtime add table public\.room_invites/);
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("table:'room_invites'"));
+  assert.ok(cloud.includes("filter:'receiver_id=eq.'+user.id"));
+});
