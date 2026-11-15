@@ -38,7 +38,7 @@ test('computer turns request AI word candidates and retain a verified fallback v
  assert.ok(local.includes('const fallbackMoves=findBotMoves(session)'));
  assert.ok(botClient.includes("functions.invoke('scrabble-bot'"));
  assert.ok(botClient.includes('session.board.map'));
- assert.ok(botEdge.includes("createSupabaseContext(req, { auth: 'user' })"));
+ assert.ok(botEdge.includes('createSupabaseContext(req, { auth: "user" })'));
  assert.ok(botEdge.includes('OPENAI_API_KEY'));
  assert.ok(botEdge.includes('json_schema'));
  assert.ok(botEdge.includes('maxItems: 80'));
