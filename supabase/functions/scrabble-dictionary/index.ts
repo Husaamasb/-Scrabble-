@@ -94,41 +94,46 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
   let valid = false;
   let source = "wiktionary";
   let aiChecked = false;
-  const url = new URL("https://" + language + ".wiktionary.org/w/api.php");
-  url.search = new URLSearchParams({
-    action: "query",
-    format: "json",
-    formatversion: "2",
-    titles: normalized,
-  }).toString();
-
   let wiktionaryAvailable = false;
-  try {
-    const response = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "ScrabbleArabic/0.3.0" },
-      signal: AbortSignal.timeout(4500),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      const page = data?.query?.pages?.[0];
-      valid = Boolean(page && !page.missing && !page.invalid);
-      wiktionaryAvailable = true;
-    }
-  } catch (error) {
-    console.warn("Wiktionary lookup failed:", error);
-  }
+  const openAiKey = Deno.env.get("OPENAI_API_KEY");
 
-  if (!valid) {
-    const openAiKey = Deno.env.get("OPENAI_API_KEY");
-    if (openAiKey) {
+  // AI is the primary judge when configured; Wiktionary is the fallback.
+  if (openAiKey) {
+    try {
       valid = await aiDictionaryVerdict(normalized, language, openAiKey);
       source = "ai";
       aiChecked = true;
+    } catch (error) {
+      console.error("AI dictionary provider failed; trying Wiktionary fallback:", error);
     }
   }
 
-  // Do not cache a negative result if neither provider was available. That lets
-  // the next attempt recover immediately when a secret or provider is restored.
+  if (!aiChecked) {
+    const url = new URL("https://" + language + ".wiktionary.org/w/api.php");
+    url.search = new URLSearchParams({
+      action: "query",
+      format: "json",
+      formatversion: "2",
+      titles: normalized,
+    }).toString();
+
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json", "User-Agent": "ScrabbleArabic/0.3.0" },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const page = data?.query?.pages?.[0];
+        valid = Boolean(page && !page.missing && !page.invalid);
+        wiktionaryAvailable = true;
+      }
+    } catch (error) {
+      console.warn("Wiktionary lookup failed:", error);
+    }
+  }
+
+  // Do not cache a negative result if neither provider was available.
   if (valid || wiktionaryAvailable || aiChecked) {
     const { error } = await admin.from("scrabble_dictionary_cache").upsert({
       language,
@@ -139,7 +144,7 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
     if (error) console.error("Dictionary cache write failed:", error);
   }
 
-  return { valid, source };
+  return { valid, source, aiChecked };
 }
 
 Deno.serve(async (req) => {
@@ -155,6 +160,12 @@ Deno.serve(async (req) => {
     const language = body?.language === "ar" ? "ar" : body?.language === "en" ? "en" : null;
     if (!language || typeof body?.word !== "string") return json({ error: "A word and language are required." }, 400);
     const result = await dictionaryEntry(ctx.supabaseAdmin, body.word, language);
+    console.info("Scrabble dictionary verdict:", JSON.stringify({
+      language,
+      source: result.source,
+      aiChecked: result.aiChecked,
+      valid: result.valid,
+    }));
     return json(result);
   } catch (error) {
     console.error("Dictionary validation failed:", error);
