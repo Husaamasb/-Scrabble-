@@ -108,7 +108,7 @@ test('in-app notifications are private, event-driven, and readable through realt
   assert.ok(cloud.includes('resultNotice'));
   assert.ok(cloud.includes('rewardNotice'));
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
-  assert.ok(dashboard.includes("'notifications'].includes(section)"));
+  assert.ok(dashboard.includes("'notifications','store'].includes(section)"));
   const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
   assert.ok(app.includes("id:'notifications'"));
 });
