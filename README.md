@@ -144,3 +144,5 @@ The server checks admin dictionary overrides first, then trusted AI verdict cach
 - `scrabble-move`: server-authoritative online move validation and scoring.
 - `scrabble-dictionary`: authenticated dictionary validation for local matches.
 - `scrabble-admin`: admin-only player listing and account moderation.
+
+- Computer turns request authenticated AI-generated candidate words, validate them against the current board and rack, then check formed words with the AI-backed dictionary. The five difficulty levels still control move selection, with the built-in vocabulary retained as a fallback.
