@@ -61,6 +61,13 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scrabble-Android-Debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Install and launch APK in Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -81,12 +88,5 @@ jobs:
         with:
           name: Scrabble-Android-Emulator-Screenshot
           path: scrabble-emulator.png
-          if-no-files-found: error
-          retention-days: 14
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Scrabble-Android-Debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
