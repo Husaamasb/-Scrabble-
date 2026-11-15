@@ -12,6 +12,7 @@ test('quick matchmaking joins a public two-player queue for the selected languag
   assert.ok(cloud.includes("rpc('set_scrabble_ready'"));
   assert.ok(cloud.includes("room_name:'Quick match',public_room:true,player_limit:2"));
   assert.ok(cloud.includes("setQuickMatchMode(true)"));
+  assert.ok(cloud.includes("member.room_id===activeRoom.id&&!member.is_withdrawn"));
   assert.ok(cloud.includes("activeMembers.length!==2||activeMembers.some(member=>!member.is_ready)"));
   assert.ok(cloud.includes("rpc('start_scrabble_room'"));
   assert.ok(cloud.includes("ar?'العب مباراة سريعة':'Quick match'"));
