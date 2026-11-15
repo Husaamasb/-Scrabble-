@@ -76,3 +76,6 @@ Run `npm test` to execute the automated board, move-validation, scoring, and til
 ## Player progression
 
 Completed online matches are settled server-side. Final scores determine wins, draws, and losses; XP changes by +20 for a win, +15 for a draw, and -5 for a loss (XP never falls below zero). The profile shows progression totals and the player's own recent match history. Match-result rows are protected by RLS, and clients cannot directly change XP or match counters.
+
+
+The online section also displays a global XP leaderboard for profiles whose privacy is set to Everyone, ordered by XP and then wins. Weekly, monthly, and per-game leaderboards are still future work.
