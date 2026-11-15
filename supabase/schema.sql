@@ -2243,3 +2243,102 @@ grant execute on function public.create_scrabble_tournament(text,text,integer) t
 grant execute on function public.join_scrabble_tournament(uuid) to authenticated;
 grant execute on function public.start_scrabble_tournament(uuid) to authenticated;
 grant execute on function public.report_scrabble_tournament_match(uuid,uuid) to authenticated;
+
+
+-- Tournament games are real two-player rooms. The database links the room result
+-- to its bracket match and advances the bracket without host intervention.
+alter table public.scrabble_tournament_matches
+  add column if not exists room_id uuid unique references public.rooms(id) on delete set null;
+
+alter table public.scrabble_tournament_matches
+  drop constraint if exists scrabble_tournament_matches_status_check;
+alter table public.scrabble_tournament_matches
+  add constraint scrabble_tournament_matches_status_check
+  check (status in ('scheduled','completed','tied'));
+
+create or replace function public.complete_scrabble_tournament_match(target_match uuid, winning_player uuid)
+returns void language plpgsql security definer set search_path=''
+as $function$
+declare m public.scrabble_tournament_matches; t public.scrabble_tournaments; winners uuid[]; pending integer; next_round integer; i integer; total_winners integer; p1 uuid; p2 uuid; current_round integer;
+begin
+ select * into m from public.scrabble_tournament_matches where id=target_match for update;
+ if not found or m.status<>'scheduled' then return; end if;
+ if winning_player is null or (winning_player<>m.player1_id and winning_player<>m.player2_id) then raise exception 'Verified winner must be a participant in this match'; end if;
+ select * into t from public.scrabble_tournaments where id=m.tournament_id for update;
+ if not found or t.status<>'ongoing' then return; end if;
+ update public.scrabble_tournament_matches set winner_id=winning_player,status='completed' where id=target_match;
+ current_round:=m.round_number;
+ loop
+  select count(*) into pending from public.scrabble_tournament_matches where tournament_id=m.tournament_id and round_number=current_round and status<>'completed';
+  if pending>0 then exit; end if;
+  select array_agg(winner_id order by match_number),count(*) into winners,total_winners from public.scrabble_tournament_matches where tournament_id=m.tournament_id and round_number=current_round and status='completed' and winner_id is not null;
+  if total_winners=1 then
+   update public.scrabble_tournaments set status='completed',champion_id=winners[1],completed_at=now() where id=m.tournament_id;
+   exit;
+  end if;
+  if coalesce(total_winners,0)<2 then raise exception 'Tournament bracket has no valid advancing players'; end if;
+  next_round:=current_round+1;
+  for i in 1..((total_winners+1)/2) loop
+   p1:=winners[(i*2)-1]; p2:=winners[i*2];
+   insert into public.scrabble_tournament_matches(tournament_id,round_number,match_number,player1_id,player2_id,winner_id,status)
+   values(m.tournament_id,next_round,i,p1,p2,case when p2 is null then p1 else null end,case when p2 is null then 'completed' else 'scheduled' end);
+  end loop;
+  current_round:=next_round;
+ end loop;
+end;
+$function$;
+revoke all on function public.complete_scrabble_tournament_match(uuid,uuid) from public,anon,authenticated,service_role;
+
+create or replace function public.create_scrabble_tournament_match_room(target_match uuid)
+returns public.rooms language plpgsql security definer set search_path=''
+as $function$
+declare uid uuid:=auth.uid(); m public.scrabble_tournament_matches; t public.scrabble_tournaments; created public.rooms;
+begin
+ if uid is null then raise exception 'Sign in required'; end if;
+ select * into m from public.scrabble_tournament_matches where id=target_match for update;
+ if not found then raise exception 'Tournament match not found'; end if;
+ if uid<>m.player1_id and uid<>m.player2_id then raise exception 'Only match participants can open this game'; end if;
+ select * into t from public.scrabble_tournaments where id=m.tournament_id for update;
+ if not found or t.status<>'ongoing' then raise exception 'Tournament is not active'; end if;
+ if m.status not in ('scheduled','tied') then raise exception 'Tournament match is already completed'; end if;
+ if m.room_id is not null then
+  select * into created from public.rooms where id=m.room_id;
+  if found and created.status in ('waiting','playing') then return created; end if;
+ end if;
+ insert into public.rooms(name,host_id,is_public,max_players,language)
+ values(left(t.name||' · R'||m.round_number||' M'||m.match_number,40),uid,false,2,t.language)
+ returning * into created;
+ insert into public.room_members(room_id,user_id,seat) values(created.id,m.player1_id,1),(created.id,m.player2_id,2);
+ update public.scrabble_tournament_matches set room_id=created.id,status='scheduled',winner_id=null where id=target_match;
+ return created;
+end;
+$function$;
+revoke all on function public.create_scrabble_tournament_match_room(uuid) from public,anon;
+grant execute on function public.create_scrabble_tournament_match_room(uuid) to authenticated;
+
+create or replace function public.sync_scrabble_tournament_match_result()
+returns trigger language plpgsql security definer set search_path=''
+as $function$
+declare m public.scrabble_tournament_matches; best_score integer; best_count integer; winning_player uuid;
+begin
+ if old.status<>'playing' or new.status<>'finished' then return new; end if;
+ select * into m from public.scrabble_tournament_matches where room_id=new.id and status='scheduled' for update;
+ if not found then return new; end if;
+ select max(score),count(*) filter(where score=(select max(score) from public.scrabble_match_results where room_id=new.id))
+ into best_score,best_count from public.scrabble_match_results where room_id=new.id;
+ if best_score is null or best_count=0 then raise exception 'Verified match result is missing; tournament cannot advance'; end if;
+ if best_count>1 then
+  update public.scrabble_tournament_matches set status='tied',room_id=null,winner_id=null where id=m.id;
+  return new;
+ end if;
+ select user_id into winning_player from public.scrabble_match_results where room_id=new.id and score=best_score order by created_at asc limit 1;
+ perform public.complete_scrabble_tournament_match(m.id,winning_player);
+ return new;
+end;
+$function$;
+revoke all on function public.sync_scrabble_tournament_match_result() from public,anon,authenticated,service_role;
+drop trigger if exists zz_sync_scrabble_tournament_match_result on public.rooms;
+create trigger zz_sync_scrabble_tournament_match_result after update of status on public.rooms
+for each row when(old.status='playing' and new.status='finished')
+execute function public.sync_scrabble_tournament_match_result();
+drop function if exists public.report_scrabble_tournament_match(uuid,uuid);
