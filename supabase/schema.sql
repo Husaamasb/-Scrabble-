@@ -1951,10 +1951,10 @@ begin
  select * into gift from public.scrabble_gifts where id=target_gift and recipient_id=uid and status='pending' for update;
  if not found then raise exception 'Gift not available'; end if;
  if accept_gift then
-   insert into public.scrabble_inventory(user_id,item_key) values(uid,gift.item_key);
+   insert into public.scrabble_inventory(user_id,item_key) values(uid,gift.item_key) on conflict(user_id,item_key) do nothing;
    update public.scrabble_gifts set status='accepted',resolved_at=now() where id=target_gift;
  else
-   insert into public.scrabble_inventory(user_id,item_key) values(gift.sender_id,gift.item_key);
+   insert into public.scrabble_inventory(user_id,item_key) values(gift.sender_id,gift.item_key) on conflict(user_id,item_key) do nothing;
    update public.scrabble_gifts set status='rejected',resolved_at=now() where id=target_gift;
  end if;
 end;
