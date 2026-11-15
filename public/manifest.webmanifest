@@ -1,7 +1,7 @@
 {
-  "name": "Scrabble",
-  "short_name": "Scrabble",
-  "description": "Arabic and English Scrabble word game",
+  "name": "سكرابل العربية",
+  "short_name": "سكرابل",
+  "description": "لعبة سكرابل العربية والإنجليزية",
   "lang": "ar",
   "start_url": "./",
   "scope": "./",
