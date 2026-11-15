@@ -240,7 +240,9 @@ create policy "receiver updates room invite" on public.room_invites for update t
 grant execute on function public.is_scrabble_room_member(uuid) to authenticated;
 grant execute on function public.accept_friend_request(uuid) to authenticated;
 grant execute on function public.join_room_by_code(text) to authenticated;
+revoke all on function public.create_scrabble_room(text,boolean,int,text) from public,anon;
 grant execute on function public.create_scrabble_room(text,boolean,int,text) to authenticated;
+revoke all on function public.create_scrabble_room_with_rules(text,boolean,int,text,text) from public,anon;
 grant execute on function public.create_scrabble_room_with_rules(text,boolean,int,text,text) to authenticated;
 
 -- Enable realtime replication for the tables used by the app.
