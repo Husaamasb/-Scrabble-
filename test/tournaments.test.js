@@ -33,7 +33,7 @@ test('single-elimination bracket advances winners and handles byes', () => {
 });
 
 test('tournament UI is connected to authenticated cloud dashboard', () => {
-  assert.match(dashboard, /'tournaments','admin','report'\]/);
+  assert.match(dashboard, /'tournaments','admin','report','settings'\]/);
   assert.match(cloud, /section==='tournaments'/);
   for (const rpc of ['create_scrabble_tournament','join_scrabble_tournament','start_scrabble_tournament','create_scrabble_tournament_match_room']) {
     assert.ok(cloud.includes("rpc('" + rpc + "'"), rpc + ' must be called from the UI');
