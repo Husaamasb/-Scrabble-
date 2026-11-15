@@ -69,7 +69,7 @@ jobs:
           retention-days: 14
 
       - name: Install and launch APK in Android emulator
-        timeout-minutes: 15
+        timeout-minutes: 10
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -78,7 +78,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          emulator-boot-timeout: 600
+          emulator-boot-timeout: 300
           disable-animations: true
           script: |
             set -eu
@@ -96,10 +96,11 @@ jobs:
             grep -q "mResumedActivity" "$GITHUB_WORKSPACE/android-activity.txt" || { echo "No resumed Android activity"; cat "$GITHUB_WORKSPACE/android-activity.txt"; exit 1; }
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Scrabble-Android-Emulator-Screenshot
           path: scrabble-emulator.png
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - uses: actions/upload-artifact@v4
