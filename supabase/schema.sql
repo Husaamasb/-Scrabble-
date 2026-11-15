@@ -1996,3 +1996,110 @@ drop policy if exists "players create own scrabble settings" on public.scrabble_
 create policy "players create own scrabble settings" on public.scrabble_user_settings for insert to authenticated with check((select auth.uid())=user_id);
 drop policy if exists "players update own scrabble settings" on public.scrabble_user_settings;
 create policy "players update own scrabble settings" on public.scrabble_user_settings for update to authenticated using((select auth.uid())=user_id) with check((select auth.uid())=user_id);
+
+-- Room host removal and democratic voting.
+
+create schema if not exists private;
+create table if not exists public.scrabble_room_removal_votes(
+ id uuid primary key default gen_random_uuid(), room_id uuid not null references public.rooms(id) on delete cascade,
+ target_user_id uuid not null references public.profiles(id) on delete cascade, started_by uuid not null references public.profiles(id) on delete cascade,
+ status text not null default 'open' check(status in ('open','approved','rejected','cancelled')), created_at timestamptz not null default now(), resolved_at timestamptz
+);
+create unique index if not exists one_open_scrabble_removal_vote_per_room on public.scrabble_room_removal_votes(room_id) where status='open';
+create table if not exists public.scrabble_room_removal_ballots(
+ vote_id uuid not null references public.scrabble_room_removal_votes(id) on delete cascade,
+ voter_id uuid not null references public.profiles(id) on delete cascade, approve boolean not null, created_at timestamptz not null default now(),
+ primary key(vote_id,voter_id)
+);
+alter table public.scrabble_room_removal_votes enable row level security;
+alter table public.scrabble_room_removal_ballots enable row level security;
+revoke all on public.scrabble_room_removal_votes,public.scrabble_room_removal_ballots from anon,authenticated;
+grant select on public.scrabble_room_removal_votes,public.scrabble_room_removal_ballots to authenticated;
+drop policy if exists "room members read removal votes" on public.scrabble_room_removal_votes;
+create policy "room members read removal votes" on public.scrabble_room_removal_votes for select to authenticated using(public.is_scrabble_room_member(room_id));
+drop policy if exists "room members read removal ballots" on public.scrabble_room_removal_ballots;
+create policy "room members read removal ballots" on public.scrabble_room_removal_ballots for select to authenticated using(exists(select 1 from public.scrabble_room_removal_votes v where v.id=vote_id and public.is_scrabble_room_member(v.room_id)));
+create or replace function private.apply_scrabble_room_removal(p_room uuid,p_target uuid,p_reason text)
+returns public.rooms language plpgsql security definer set search_path=''
+as $$
+declare r public.rooms; current_idx integer; player_ids jsonb; count_players integer; step integer; next_idx integer; next_uid uuid; active_count integer; log_items jsonb;
+begin
+ select * into r from public.rooms where id=p_room for update;
+ if not found then raise exception 'Room not found'; end if;
+ if r.status not in ('waiting','playing') then raise exception 'Room is not active'; end if;
+ if not exists(select 1 from public.room_members where room_id=p_room and user_id=p_target and not is_withdrawn) then raise exception 'Player is not active in this room'; end if;
+ if p_target=r.host_id then raise exception 'The room host cannot be removed by this action'; end if;
+ if r.status='waiting' then delete from public.room_members where room_id=p_room and user_id=p_target; update public.rooms set updated_at=now() where id=p_room returning * into r; return r; end if;
+ update public.room_members set is_withdrawn=true,is_ready=false where room_id=p_room and user_id=p_target;
+ select count(*) into active_count from public.room_members where room_id=p_room and not is_withdrawn;
+ if active_count<=1 then return public.settle_scrabble_room(p_room,null,case when active_count=0 then 'all_withdrawn' else 'last_player_remaining' end); end if;
+ player_ids:=r.game_state->'player_ids'; count_players:=coalesce(jsonb_array_length(player_ids),0); current_idx:=coalesce((r.game_state->>'turn_index')::integer,-1); next_idx:=current_idx;
+ if count_players<2 or current_idx<0 or current_idx>=count_players then raise exception 'Match player order is invalid'; end if;
+ if player_ids->>current_idx=p_target::text then
+   next_uid:=null;
+   for step in 1..count_players loop next_idx:=mod(current_idx+step,count_players); next_uid:=(player_ids->>next_idx)::uuid;
+     if exists(select 1 from public.room_members where room_id=p_room and user_id=next_uid and not is_withdrawn) then exit; end if; next_uid:=null;
+   end loop;
+   if next_uid is null then raise exception 'No active players remain'; end if;
+ end if;
+ log_items:=coalesce(r.game_state->'log','[]'::jsonb)||jsonb_build_array(jsonb_build_object('type',p_reason,'user_id',p_target,'at',now()));
+ update public.rooms set game_state=r.game_state||jsonb_build_object('turn_index',next_idx,'revision',coalesce((r.game_state->>'revision')::integer,0)+1,'log',log_items),updated_at=now() where id=p_room returning * into r;
+ return r;
+end;
+$$;
+revoke all on function private.apply_scrabble_room_removal(uuid,uuid,text) from public,anon,authenticated;
+create or replace function public.host_kick_scrabble_room_player(target_room uuid,target_player uuid)
+returns public.rooms language plpgsql security definer set search_path=''
+as $$ declare r public.rooms; begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select * into r from public.rooms where id=target_room for update;
+ if not found then raise exception 'Room not found'; end if;
+ if r.host_id<>auth.uid() then raise exception 'Only the host can remove a player'; end if;
+ if target_player=auth.uid() then raise exception 'Host cannot kick themselves'; end if;
+ return private.apply_scrabble_room_removal(target_room,target_player,'host_kick');
+end; $$;
+revoke all on function public.host_kick_scrabble_room_player(uuid,uuid) from public,anon;
+grant execute on function public.host_kick_scrabble_room_player(uuid,uuid) to authenticated;
+create or replace function public.start_scrabble_room_removal_vote(target_room uuid,target_player uuid)
+returns uuid language plpgsql security definer set search_path=''
+as $$ declare r public.rooms; vote_id uuid; active_count integer; begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select * into r from public.rooms where id=target_room for update;
+ if not found or r.status not in ('waiting','playing') then raise exception 'Room is not active'; end if;
+ if not exists(select 1 from public.room_members where room_id=target_room and user_id=auth.uid() and not is_withdrawn) then raise exception 'Active room membership required'; end if;
+ if target_player=auth.uid() then raise exception 'You cannot vote to remove yourself'; end if;
+ if target_player=r.host_id then raise exception 'The host cannot be removed by a vote'; end if;
+ if not exists(select 1 from public.room_members where room_id=target_room and user_id=target_player and not is_withdrawn) then raise exception 'Target player is not active'; end if;
+ select count(*) into active_count from public.room_members where room_id=target_room and not is_withdrawn;
+ if active_count<3 then raise exception 'At least three active players are required to start a vote'; end if;
+ if exists(select 1 from public.scrabble_room_removal_votes where room_id=target_room and status='open') then raise exception 'A removal vote is already open'; end if;
+ insert into public.scrabble_room_removal_votes(room_id,target_user_id,started_by) values(target_room,target_player,auth.uid()) returning id into vote_id;
+ insert into public.scrabble_room_removal_ballots(vote_id,voter_id,approve) values(vote_id,auth.uid(),true);
+ return vote_id;
+end; $$;
+revoke all on function public.start_scrabble_room_removal_vote(uuid,uuid) from public,anon;
+grant execute on function public.start_scrabble_room_removal_vote(uuid,uuid) to authenticated;
+create or replace function public.cast_scrabble_room_removal_vote(target_vote uuid,approve boolean)
+returns text language plpgsql security definer set search_path=''
+as $$ declare v public.scrabble_room_removal_votes; active_count integer; eligible_count integer; yes_count integer; no_count integer; ballot_count integer; begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select * into v from public.scrabble_room_removal_votes where id=target_vote for update;
+ if not found or v.status<>'open' then raise exception 'Vote is no longer open'; end if;
+ if not exists(select 1 from public.room_members where room_id=v.room_id and user_id=auth.uid() and not is_withdrawn) then raise exception 'Active room membership required'; end if;
+ if auth.uid()=v.target_user_id then raise exception 'The target player cannot vote'; end if;
+ select count(*) into active_count from public.room_members where room_id=v.room_id and not is_withdrawn;
+ eligible_count:=active_count-1;
+ if exists(select 1 from public.scrabble_room_removal_ballots where vote_id=target_vote and voter_id=auth.uid()) then raise exception 'You have already voted'; end if;
+ insert into public.scrabble_room_removal_ballots(vote_id,voter_id,approve) values(target_vote,auth.uid(),approve);
+ select count(*) filter(where b.approve),count(*) filter(where not b.approve),count(*) into yes_count,no_count,ballot_count
+ from public.scrabble_room_removal_ballots b join public.room_members m on m.room_id=v.room_id and m.user_id=b.voter_id and not m.is_withdrawn where b.vote_id=target_vote;
+ if yes_count>eligible_count/2 then
+   update public.scrabble_room_removal_votes set status='approved',resolved_at=now() where id=target_vote;
+   perform private.apply_scrabble_room_removal(v.room_id,v.target_user_id,'player_vote'); return 'approved';
+ elsif no_count>eligible_count/2 or ballot_count>=eligible_count then
+   update public.scrabble_room_removal_votes set status='rejected',resolved_at=now() where id=target_vote; return 'rejected';
+ end if;
+ return 'open';
+end; $$;
+revoke all on function public.cast_scrabble_room_removal_vote(uuid,boolean) from public,anon;
+grant execute on function public.cast_scrabble_room_removal_vote(uuid,boolean) to authenticated;
