@@ -66,3 +66,8 @@ An Android APK is not installable on iPhone/iPad; iOS requires a signed iOS buil
 ## Online Scrabble progress
 
 Online rooms now support server-validated word placement through the `scrabble-move` Edge Function, exact dictionary-entry checks for the room language, server-side scoring and rack refill, a live score display and word log, and automatic endgame rack settlement. Realtime reconnect recovery and online result/XP persistence remain unfinished; the project is not yet a complete release.
+
+
+## Tests
+
+Run `npm test` to execute the automated board, move-validation, scoring, and tile-distribution tests before building the app.
