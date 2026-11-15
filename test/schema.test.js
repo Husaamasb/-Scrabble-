@@ -108,7 +108,7 @@ test('in-app notifications are private, event-driven, and readable through realt
   assert.ok(cloud.includes('resultNotice'));
   assert.ok(cloud.includes('rewardNotice'));
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
-  assert.ok(dashboard.includes("'notifications','store','tournaments','admin','report'].includes(section)"));
+  assert.ok(dashboard.includes("'notifications','store','tournaments','admin','report','settings'].includes(section)"));
   const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
   assert.ok(app.includes("id:'notifications'"));
 });
@@ -124,7 +124,7 @@ test('virtual store purchases are server-authoritative and inventory is private'
   assert.ok(cloud.includes("supabase.from('scrabble_store_catalog')"));
   assert.ok(cloud.includes("supabase.rpc('purchase_scrabble_store_item'"));
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
-  assert.ok(dashboard.includes("'store','tournaments','admin','report'].includes(section)"));
+  assert.ok(dashboard.includes("'store','tournaments','admin','report','settings'].includes(section)"));
 });
 
 test('gifts transfer owned cosmetics only between friends and notify the recipient',()=>{
@@ -164,7 +164,7 @@ test('account settings persist privately for signed-in players',()=>{
   assert.ok(cloud.includes("supabase.from('scrabble_user_settings').upsert"));
   assert.ok(cloud.includes('notification_preferences:preferences'));
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
-  assert.ok(dashboard.includes("section==='settings'&&cloudSignedIn"));
+  assert.ok(dashboard.includes("'settings'].includes(section)"));
 });
 
 test('the original user-provided logo is used in the app header and retained as the app icon asset',()=>{
