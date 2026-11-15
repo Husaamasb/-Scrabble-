@@ -1,13 +1,14 @@
 export const BOARD_SIZE = 15;
 export const CENTER = 112;
 
-const coords = (pairs) => new Set(pairs.map(([r,c]) => r * BOARD_SIZE + c));
 const mirror = (pairs) => pairs.flatMap(([r,c]) => [[r,c],[r,14-c],[14-r,c],[14-r,14-c]]);
 export const PREMIUM = (() => {
   const map = Array(225).fill(null);
   const put = (pairs, type) => pairs.forEach(([r,c]) => { map[r*15+c] = type; });
   put([[0,0],[0,7],[0,14],[7,0],[7,14],[14,0],[14,7],[14,14]], 'TW');
-  put(mirror([[1,1],[2,2],[3,3],[4,4]]).concat([[7,7]]), 'DW');
+  // Exact owner-specified double-word coordinates: D2/L2, C3/M3, B4/N4,
+  // E5/K5, H8, E11/K11, B12/N12, C13/M13, D14/L14.
+  put(mirror([[1,3],[2,2],[3,1],[4,4]]).concat([[7,7]]), 'DW');
   put(mirror([[1,5],[5,1],[5,5]]), 'TL');
   put([[0,3],[0,11],[2,6],[2,8],[3,0],[3,7],[3,14],[6,2],[6,6],[6,8],[6,12],[7,3],[7,11],[8,2],[8,6],[8,8],[8,12],[11,0],[11,7],[11,14],[12,6],[12,8],[14,3],[14,11]], 'DL');
   return Object.freeze(map);
@@ -65,7 +66,6 @@ export function evaluateMove(board, proposed) {
   if (firstMove && !placements.has(CENTER)) return { valid:false, reason:'must-cover-center' };
 
   const horizontal = proposed.length === 1 || proposed.every(p=>p.row===proposed[0].row);
-  const dr = horizontal ? 0 : 1, dc = horizontal ? 1 : 0;
   const ordered = [...proposed].sort((a,b)=>horizontal?a.col-b.col:a.row-b.row);
   const start = horizontal ? ordered[0].col : ordered[0].row;
   const end = horizontal ? ordered.at(-1).col : ordered.at(-1).row;
