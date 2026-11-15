@@ -24,7 +24,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Scrabble premium-square scoring, cross-word scoring, blank-tile zero value, and 50-point seven-tile bonus.
 - User-specified Arabic (110) and English (100) tile sets.
 - Face-down wooden tile chest, rack draw, undo, and return-pending-tiles controls.
-- Exact-entry Arabic and English Wiktionary lookup. A move is accepted only when every formed word has an entry; lookup/network failures fail closed.
+- Hybrid Arabic/English dictionary: authenticated games check server-side admin overrides and cache, exact Wiktionary entries, then a conservative OpenAI Responses API lexicon review for missing entries. Guest/offline games retain exact Wiktionary checks. Provider failures never auto-approve words.
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
 - Playable same-device multiplayer mode for 2–4 players, with starting-player draw, private turn handoff, scoring, pass/exchange flow, match history, winner display, and automatic local match recovery.
@@ -115,3 +115,13 @@ The online section includes global, weekly, monthly, Arabic-game, and English-ga
 - With at least three active players, any active non-host player can propose removing another non-host player. The proposer casts the first yes vote automatically; the target cannot vote.
 - Each eligible player gets one ballot. Removal requires a strict majority of eligible players; otherwise the proposal closes without removing anyone.
 - Removal is processed by server-side functions, skips a removed player's turn when necessary, and is recorded in the room match log. A removed player is returned to the room list.
+
+
+## AI dictionary configuration
+
+The server-side AI dictionary uses an OpenAI API key stored only as a Supabase Edge Function secret. In the Supabase Dashboard for this project, open **Edge Functions → Secrets** and add:
+
+- `OPENAI_API_KEY`: the private API key (never put it in the browser or GitHub).
+- `OPENAI_DICTIONARY_MODEL` (optional): defaults to `gpt-4.1-mini`.
+
+The AI review runs only when the exact Wiktionary lookup has no entry. Results are cached server-side; admin dictionary overrides take priority. Without the key, the app safely continues using Wiktionary. Configure the key at [Supabase Edge Function Secrets](https://supabase.com/dashboard/project/rwcwuxraekgpaeujhxbg/functions/secrets).
