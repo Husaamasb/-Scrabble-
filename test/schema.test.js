@@ -45,3 +45,16 @@ test('online leaderboard offers global, weekly, monthly, and language-specific v
   assert.ok(cloud.includes(".eq('privacy','everyone')"));
   assert.ok(cloud.includes("periodStart='0001-01-01'"));
 });
+
+ 
+test('iOS simulator workflow builds the Capacitor app on macOS without claiming an IPA',()=>{
+  const workflow=readFileSync(new URL('../.github/workflows/ios-simulator.yml',import.meta.url),'utf8');
+  assert.match(workflow,/runs-on: macos-15/);
+  assert.match(workflow,/npx cap add ios/);
+  assert.match(workflow,/npx cap sync ios/);
+  assert.match(workflow,/xcodebuild/);
+  assert.match(workflow,/CODE_SIGNING_ALLOWED=NO/);
+  assert.match(workflow,/Scrabble-iOS-Simulator\.zip/);
+  assert.match(workflow,/actions\/upload-artifact@v4/);
+  assert.match(readme,/unsigned simulator app/);
+});
