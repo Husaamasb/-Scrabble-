@@ -15,28 +15,38 @@ test('tournaments have RLS-protected tables and explicit read grants', () => {
 });
 
 test('tournament RPCs restrict execution and validate host ownership', () => {
-  for (const fn of ['create_scrabble_tournament','join_scrabble_tournament','start_scrabble_tournament','report_scrabble_tournament_match']) {
+  for (const fn of ['create_scrabble_tournament','join_scrabble_tournament','start_scrabble_tournament','create_scrabble_tournament_match_room']) {
     assert.match(schema, new RegExp('revoke all on function public\\.' + fn + '\\('));
     assert.match(schema, new RegExp('grant execute on function public\\.' + fn + '\\('));
   }
   assert.match(schema, /target\.owner_id<>auth\.uid\(\)/);
-  assert.match(schema, /t\.owner_id<>auth\.uid\(\)/);
-  assert.match(schema, /winning_player<>m\.player1_id and winning_player<>m\.player2_id/);
+  assert.match(schema, /Only match participants can open this game/);
+  assert.match(schema, /Only the tournament host can start it/);
 });
 
 test('single-elimination bracket advances winners and handles byes', () => {
   assert.match(schema, /round_size integer:=1/);
   assert.match(schema, /if p1 is null and p2 is null then continue/);
   assert.match(schema, /winner_id,status/);
-  assert.match(schema, /next_round:=m\.round_number\+1/);
+  assert.match(schema, /next_round:=current_round\+1/);
   assert.match(schema, /champion_id=winners\[1\]/);
 });
 
 test('tournament UI is connected to authenticated cloud dashboard', () => {
   assert.match(dashboard, /'tournaments'\]/);
   assert.match(cloud, /section==='tournaments'/);
-  for (const rpc of ['create_scrabble_tournament','join_scrabble_tournament','start_scrabble_tournament','report_scrabble_tournament_match']) {
+  for (const rpc of ['create_scrabble_tournament','join_scrabble_tournament','start_scrabble_tournament','create_scrabble_tournament_match_room']) {
     assert.ok(cloud.includes("rpc('" + rpc + "'"), rpc + ' must be called from the UI');
   }
   assert.match(cloud, /cloud-tournament-round/);
+});
+
+test('tournament winners are derived only from completed server match results', () => {
+  assert.match(schema, /sync_scrabble_tournament_match_result/);
+  assert.match(schema, /from public\.scrabble_match_results where room_id=new\.id/);
+  assert.match(schema, /perform public\.complete_scrabble_tournament_match/);
+  assert.match(schema, /status='tied',room_id=null/);
+  assert.doesNotMatch(schema, /create or replace function public\.report_scrabble_tournament_match/);
+  assert.match(cloud, /openTournamentMatch/);
+  assert.doesNotMatch(cloud, /recordTournamentWinner/);
 });
