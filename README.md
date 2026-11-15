@@ -43,7 +43,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 
 ## Still required for a complete release
 
-- A separate six-digit OTP challenge on every password sign-in is not implemented; the current email code verifies new account creation. SMTP delivery, Google/Apple OAuth, and password recovery still need real-account testing.
+- Password sign-in now verifies the password in a non-persistent client, sends a six-digit email OTP, and creates the main session only after the code is verified. Email OTP must be enabled in Supabase Auth and this flow still needs real-account testing. SMTP delivery, Google/Apple OAuth, and password recovery also need real-account testing.
 - Profile avatar selection and achievement badges are implemented; badges are currently calculated from profile totals rather than stored as permanent award records.
 - Complete end-to-end tests with at least two real players, including room reconnects, pass/exchange, match settlement, and automatic tournament advancement.
 - Verify a real authenticated AI dictionary request in the Supabase Edge Function logs; code and deployments are ready, but a live provider verdict has not yet been observed in the recent logs.
