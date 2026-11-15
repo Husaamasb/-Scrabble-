@@ -74,6 +74,7 @@ create table if not exists public.rooms (
   host_id uuid not null references public.profiles(id) on delete cascade,
   is_public boolean not null default true,
   max_players int not null default 4 check(max_players between 2 and 4),
+  end_condition text not null default 'classic' check(end_condition in ('classic','bag_empty')),
   language text not null default 'ar' check(language in ('ar','en')),
   status text not null default 'waiting' check(status in ('waiting','playing','finished')),
   game_state jsonb not null default '{}'::jsonb,
@@ -134,7 +135,7 @@ $$;
 
 create or replace function public.create_scrabble_room(room_name text, public_room boolean, player_limit int, game_language text)
 returns setof public.rooms language plpgsql security definer set search_path = public
-as $$
+as $
 declare created public.rooms;
 begin
   if auth.uid() is null then raise exception 'Sign in required'; end if;
@@ -145,7 +146,26 @@ begin
   insert into public.room_members(room_id,user_id,seat) values(created.id,auth.uid(),1);
   return next created;
 end;
-$$;
+$;
+
+create or replace function public.create_scrabble_room_with_rules(
+  room_name text, public_room boolean, player_limit int, game_language text, match_end_mode text
+)
+returns setof public.rooms language plpgsql security definer set search_path = public
+as $
+declare created public.rooms;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  if player_limit not between 2 and 4 then raise exception 'Player limit must be 2 to 4'; end if;
+  if match_end_mode not in ('classic','bag_empty') then raise exception 'Invalid match end condition'; end if;
+  if game_language not in ('ar','en') then raise exception 'Invalid game language'; end if;
+  insert into public.rooms(name,host_id,is_public,max_players,language,end_condition)
+  values(left(room_name,40),auth.uid(),public_room,player_limit,game_language,match_end_mode)
+  returning * into created;
+  insert into public.room_members(room_id,user_id,seat) values(created.id,auth.uid(),1);
+  return next created;
+end;
+$;
 
 create or replace function public.is_scrabble_room_member(target_room uuid)
 returns boolean language sql stable security definer set search_path = public
@@ -221,6 +241,7 @@ grant execute on function public.is_scrabble_room_member(uuid) to authenticated;
 grant execute on function public.accept_friend_request(uuid) to authenticated;
 grant execute on function public.join_room_by_code(text) to authenticated;
 grant execute on function public.create_scrabble_room(text,boolean,int,text) to authenticated;
+grant execute on function public.create_scrabble_room_with_rules(text,boolean,int,text,text) to authenticated;
 
 -- Enable realtime replication for the tables used by the app.
 do $$
@@ -1656,8 +1677,12 @@ begin
     'revision',expected_revision+1
   ),updated_at=now()
   where id=target_room returning * into target;
-  if jsonb_array_length(rack_next)=0 and (select count(*) from public.room_tile_bag where room_id=target_room)=0 then
-    return public.settle_scrabble_room(target_room,actor,'tiles_exhausted');
+  if (select count(*) from public.room_tile_bag where room_id=target_room)=0 then
+    if target.end_condition='bag_empty' then
+      return public.settle_scrabble_room(target_room,null,'bag_empty');
+    elsif jsonb_array_length(rack_next)=0 then
+      return public.settle_scrabble_room(target_room,actor,'tiles_exhausted');
+    end if;
   end if;
   return target;
 end;
