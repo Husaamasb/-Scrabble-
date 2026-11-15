@@ -20,7 +20,7 @@ npx cap add ios
 npm run cap:sync
 ```
 
-Run `npx cap add ios` only on macOS with Xcode installed. Native platform directories are generated locally by Capacitor and are not included in the browser-only GitHub Pages deployment.
+Run `npx cap add ios` only on macOS with Xcode installed. Native platform directories are generated locally by Capacitor and are not included in the browser-only GitHub Pages deployment. The repository's **Build Scrabble for iOS Simulator** GitHub Actions workflow also generates the iOS project on a macOS runner, builds an unsigned Simulator `.app`, and uploads `Scrabble-iOS-Simulator.zip` as a 14-day artifact. This verifies the native iOS project build, but the simulator app is not an installable iPhone IPA.
 
 ## Android APK
 
@@ -38,7 +38,7 @@ npm run cap:sync
 npm run ios
 ```
 
-In Xcode, choose a valid Apple development team and bundle identifier, then run on a real iPhone. For distribution, use **Product → Archive** and the Apple distribution workflow. An Android APK cannot be installed on iOS; iOS requires an iOS build (IPA through Apple's signing/distribution process) or the installable Safari web app.
+In Xcode, choose a valid Apple development team and bundle identifier, then run on a real iPhone. For distribution, use **Product → Archive** and the Apple distribution workflow. An App Store/TestFlight IPA needs an Apple Developer account, a registered bundle identifier, signing certificates/profiles, and App Store Connect setup; these cannot be supplied by the unsigned simulator workflow. An Android APK cannot be installed on iOS; iOS requires an iOS build (IPA through Apple's signing/distribution process) or the installable Safari web app. On iPhone/iPad, open the web app in Safari, tap Share, then **Add to Home Screen** for the web-app version.
 
 ## Approved icon
 
