@@ -7,7 +7,7 @@ create or replace function public.create_scrabble_room_with_rules(
   room_name text, public_room boolean, player_limit int, game_language text, match_end_mode text
 )
 returns setof public.rooms language plpgsql security definer set search_path = public
-as $
+as $$
 declare created public.rooms;
 begin
   if auth.uid() is null then raise exception 'Sign in required'; end if;
@@ -20,7 +20,7 @@ begin
   insert into public.room_members(room_id,user_id,seat) values(created.id,auth.uid(),1);
   return next created;
 end;
-$;
+$$;
 
 create or replace function public.is_scrabble_room_member(target_room uuid)
 returns boolean language sql stable security definer set search_path = public
