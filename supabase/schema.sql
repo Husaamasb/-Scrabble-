@@ -1960,3 +1960,100 @@ alter policy "users leave waiting or finished rooms" on public.room_members usin
   WHERE ((r.id = room_members.room_id) AND (r.status = ANY (ARRAY['waiting'::text, 'finished'::text])))))));
 alter policy "room members send chat" on public.room_messages with check (((sender_id = ( SELECT auth.uid() AS uid)) AND is_scrabble_room_member(room_id)));
 alter policy "players read only their private room state" on public.room_player_private using (((user_id = ( SELECT auth.uid() AS uid)) AND is_scrabble_room_member(room_id)));
+
+
+-- Player progression and private match history.
+alter table public.profiles
+  add column if not exists xp integer not null default 0 check (xp >= 0),
+  add column if not exists wins integer not null default 0 check (wins >= 0),
+  add column if not exists losses integer not null default 0 check (losses >= 0),
+  add column if not exists draws integer not null default 0 check (draws >= 0);
+revoke update on public.profiles from authenticated;
+grant update (username,bio,privacy,avatar_url,updated_at) on public.profiles to authenticated;
+
+create table if not exists public.scrabble_match_results (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  language text not null check (language in ('ar','en')),
+  score integer not null default 0,
+  outcome text not null check (outcome in ('win','draw','loss')),
+  xp_change integer not null,
+  created_at timestamptz not null default now(),
+  unique(room_id,user_id)
+);
+create index if not exists scrabble_match_results_user_created_idx
+  on public.scrabble_match_results(user_id,created_at desc);
+alter table public.scrabble_match_results enable row level security;
+revoke all on public.scrabble_match_results from anon,authenticated;
+grant select on public.scrabble_match_results to authenticated;
+grant all on public.scrabble_match_results to service_role;
+drop policy if exists "players read their own match results" on public.scrabble_match_results;
+create policy "players read their own match results"
+  on public.scrabble_match_results for select to authenticated
+  using ((select auth.uid())=user_id);
+
+create or replace function public.record_scrabble_match_result()
+returns trigger language plpgsql security definer set search_path=''
+as $function$
+declare
+  score_map jsonb;
+  best_score integer;
+  best_count integer;
+  participant record;
+  final_outcome text;
+  delta integer;
+  inserted_id uuid;
+begin
+  if old.status <> 'playing' or new.status <> 'finished' then return new; end if;
+  score_map := coalesce(new.game_state->'scores','{}'::jsonb);
+  select max(coalesce((score_map->>m.user_id::text)::integer,0)),
+         count(*) filter (where coalesce((score_map->>m.user_id::text)::integer,0)=
+           (select max(coalesce((score_map->>m2.user_id::text)::integer,0))
+            from public.room_members m2 where m2.room_id=new.id and not m2.is_withdrawn))
+    into best_score,best_count
+  from public.room_members m
+  where m.room_id=new.id and not m.is_withdrawn;
+
+  for participant in
+    select m.user_id,coalesce((score_map->>m.user_id::text)::integer,0) as score
+    from public.room_members m
+    where m.room_id=new.id and not m.is_withdrawn
+  loop
+    if new.game_state->>'finish_reason'='tiles_exhausted'
+       and nullif(new.game_state->>'finisher','')::uuid=participant.user_id then
+      final_outcome := 'win';
+    elsif participant.score=best_score and best_count>1 then final_outcome := 'draw';
+    elsif participant.score=best_score then final_outcome := 'win';
+    else final_outcome := 'loss';
+    end if;
+    delta := case final_outcome when 'win' then 20 when 'draw' then 15 else -5 end;
+
+    insert into public.scrabble_match_results
+      (room_id,user_id,language,score,outcome,xp_change)
+    values (new.id,participant.user_id,case when new.language='ar' then 'ar' else 'en' end,
+      participant.score,final_outcome,delta)
+    on conflict (room_id,user_id) do nothing
+    returning id into inserted_id;
+
+    if inserted_id is not null then
+      update public.profiles
+      set xp=greatest(0,xp+delta),
+          wins=wins+case when final_outcome='win' then 1 else 0 end,
+          draws=draws+case when final_outcome='draw' then 1 else 0 end,
+          losses=losses+case when final_outcome='loss' then 1 else 0 end,
+          updated_at=now()
+      where id=participant.user_id;
+      if not found then raise exception 'Profile missing for match participant'; end if;
+    end if;
+    inserted_id := null;
+  end loop;
+  return new;
+end;
+$function$;
+revoke all on function public.record_scrabble_match_result() from public,anon,authenticated,service_role;
+drop trigger if exists record_scrabble_match_result on public.rooms;
+create trigger record_scrabble_match_result
+after update of status on public.rooms
+for each row when (old.status='playing' and new.status='finished')
+execute function public.record_scrabble_match_result();
