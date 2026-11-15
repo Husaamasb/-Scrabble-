@@ -52,7 +52,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Live end-to-end verification requires real accounts; no real-user room, reconnect, or tournament test is claimed yet.
 - Signed Android/iOS store releases require real-device testing and platform signing. The Android artifact is a debug APK; the iOS Simulator artifact is unsigned and is not an installable iPhone IPA.
 
-Guest/offline dictionary checks use Wiktionary's public MediaWiki API and require an internet connection for words not already cached. Authenticated cloud play uses the AI-first server validator, with Wiktionary only as a fallback if the AI provider is unavailable. The validator judges exact words and does not generate or suggest words.
+Guest/offline dictionary checks use locally bundled exact-word entries when the device has no network, and can also use cached or live Wiktionary entries when available. The offline word list is intentionally limited; authenticated cloud play uses the AI-first server validator, with Wiktionary only as a fallback if the AI provider is unavailable. The validator judges exact words and does not generate or suggest words.
 
 The repository is still under active development and must not be treated as a finished release.
 
