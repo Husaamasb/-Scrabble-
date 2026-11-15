@@ -9,27 +9,59 @@ test('English tile set matches the specified 100 tiles',()=>{
   assert.equal(createTileBag('en',()=>0.5).length,100);
 });
 
-test('Arabic tile table matches the final 110-piece user distribution exactly',()=>{
+test('Arabic tile table matches the exact 108-piece distribution in the user-supplied table',()=>{
   const report=tileSetReport('ar');
-  assert.equal(report.declaredTotal,110);
-  assert.equal(report.actualTotal,110);
+  assert.equal(report.declaredTotal,108);
+  assert.equal(report.actualTotal,108);
   assert.equal(report.ready,true);
-  assert.equal(createTileBag('ar',()=>0.5).length,110);
+  assert.equal(createTileBag('ar',()=>0.5).length,108);
   assert.deepEqual(TILE_SETS.ar.tiles,[
-    ['ا',1,8],['إ',1,2],['أ',1,2],['آ',8,1],['ب',1,4],['ج',1,3],
-    ['ح',1,3],['خ',1,3],['د',1,3],['ذ',1,3],['ش',2,3],['ص',2,3],
-    ['ض',3,3],['ط',2,2],['ظ',4,2],['ق',2,3],['ك',3,3],['ل',1,3],
-    ['لا',2,2],['لإ',3,1],['ن',1,3],['ه',1,3],['و',1,3],['ؤ',10,1],
-    ['ي',1,3],['ء',8,1],['ئ أول الكلمة',10,2],['★',0,2],['ت',1,4],
-    ['ة',5,1],['ث',1,3],['ر',1,3],['ز',2,3],['س',1,3],['ع',2,3],
-    ['غ',4,3],['ف',1,3],['لأ',3,1],['لآ',3,1],['م',1,4],['يء',5,1],
-    ['ى',3,1],['ئ',8,1]
+    ['ا',1,8],
+    ['أ',1,2],
+    ['إ',1,2],
+    ['آ',8,1],
+    ['ب',1,4],
+    ['ت',1,4],
+    ['ة',5,1],
+    ['ث',1,3],
+    ['ج',1,3],
+    ['ح',1,3],
+    ['خ',1,3],
+    ['د',1,3],
+    ['ذ',1,3],
+    ['ر',2,3],
+    ['ز',2,3],
+    ['س',1,3],
+    ['ش',2,3],
+    ['ص',2,3],
+    ['ض',3,3],
+    ['ط',2,2],
+    ['ظ',4,2],
+    ['ع',2,3],
+    ['غ',4,3],
+    ['ف',1,3],
+    ['ق',2,3],
+    ['ك',3,3],
+    ['ل',1,3],
+    ['لا',2,2],
+    ['لأ',3,1],
+    ['لآ',3,1],
+    ['لإ',3,1],
+    ['م',1,4],
+    ['ن',1,3],
+    ['ه',1,3],
+    ['و',1,3],
+    ['ؤ',10,1],
+    ['ي',1,3],
+    ['ى',3,1],
+    ['ء',8,1],
+    ['ئ أول الكلمة',10,2],
+    ['★',0,2]
   ]);
-  assert.equal(TILE_SETS.ar.tiles.filter(row=>row[0]==='س').length,1);
   assert.deepEqual(TILE_SETS.ar.tiles.find(row=>row[0]==='س'),['س',1,3]);
-  assert.equal(TILE_SETS.ar.tiles.some(row=>row[0]==='س'&&row[1]===2),false);
+  assert.deepEqual(TILE_SETS.ar.tiles.find(row=>row[0]==='ش'),['ش',2,3]);
+  assert.equal(TILE_SETS.ar.tiles.some(row=>row[0]==='يء'||row[0]==='ئ'),false);
 });
-
 test('Supabase server distributions exactly match the browser tile tables',()=>{
   const schema=readFileSync(new URL('../supabase/schema.sql',import.meta.url),'utf8');
   const languageBlocks=schema.match(/if target\.language='en' then([\s\S]*?)elsif target\.language='ar' then([\s\S]*?)else\s+raise exception 'Unsupported room language'/);
