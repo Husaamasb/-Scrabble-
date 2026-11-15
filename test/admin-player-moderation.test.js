@@ -12,8 +12,8 @@ test('admin player operations require secure app_metadata and protect admin acco
 });
 test('admin player UI uses server-side moderation actions',()=>{
  assert.ok(panel.includes("supabase.functions.invoke('scrabble-admin'"));
- assert.ok(panel.includes("action:'ban_user'"));
- assert.ok(panel.includes("action:'unban_user'"));
+ assert.ok(panel.includes("moderatePlayer(p.id,'ban_user'"));
+ assert.ok(panel.includes("moderatePlayer(p.id,'unban_user'"));
  assert.ok(panel.includes("'168h'"));
  assert.ok(panel.includes("'720h'"));
  assert.ok(panel.includes('banned_until'));
