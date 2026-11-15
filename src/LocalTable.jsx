@@ -3,6 +3,7 @@ import { PREMIUM, evaluateMove } from './game/engine.js';
 import { createGameSession, commitTurn, exchangeFromRack, passTurn } from './game/session.js';
 import { createHybridDictionaryValidator } from './cloud/dictionary.js';
 import { findBotMoves, orderBotMoves } from './game/bot.js';
+import { requestBotWords } from './cloud/bot.js';
 
 const names = ['اللاعب الأول','اللاعب الثاني','اللاعب الثالث','اللاعب الرابع'];
 function localSessionKey(language,botMode){return 'scrabble:local-session:'+language+':'+(botMode?'bot':'local');}
@@ -30,7 +31,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     const runBot=async()=>{
       setBusy(true);setMessage(ar?'الكمبيوتر يفكر بحركته…':'The bot is thinking…');
       try{
-        const moves=orderBotMoves(findBotMoves(session),difficulty);
+        const aiWords=await requestBotWords(session).catch(()=>[]);\n        if(cancelled)return;\n        const aiMoves=aiWords.length?findBotMoves(session,aiWords):[];\n        const fallbackMoves=findBotMoves(session);\n        const moveMap=new Map();\n        for(const move of [...aiMoves,...fallbackMoves]){const key=move.word+':'+move.placements.map(p=>p.row*15+p.col).sort((a,b)=>a-b).join(',');if(!moveMap.has(key))moveMap.set(key,move);}\n        const moves=orderBotMoves([...moveMap.values()].sort((a,b)=>b.points-a.points),difficulty);
         for(const move of moves){
           if(cancelled)return;
           const result=await commitTurn(session,move.placements,createHybridDictionaryValidator());
