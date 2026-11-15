@@ -23,11 +23,15 @@ jobs:
         with:
           node-version: 22
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install JavaScript dependencies
         run: npm install
 
-      - name: Build web app
-        run: npm run build
+      - name: Build web app for Capacitor
+        run: CAPACITOR_BUILD=true npm run build
 
       - name: Generate native iOS project
         run: npx cap add ios
@@ -35,16 +39,21 @@ jobs:
       - name: Sync Capacitor iOS project
         run: npx cap sync ios
 
+      - name: Apply original Scrabble logo to iOS app icon
+        run: |
+          python -m pip install Pillow
+          python scripts/generate-native-icons.py
+
       - name: Build unsigned iOS Simulator app
         run: |
-          xcodebuild \
-            -project ios/App/App.xcodeproj \
-            -scheme App \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build/ios \
-            CODE_SIGNING_ALLOWED=NO \
+          xcodebuild \\
+            -project ios/App/App.xcodeproj \\
+            -scheme App \\
+            -sdk iphonesimulator \\
+            -configuration Debug \\
+            -destination 'generic/platform=iOS Simulator' \\
+            -derivedDataPath build/ios \\
+            CODE_SIGNING_ALLOWED=NO \\
             build
 
       - name: Package simulator app
