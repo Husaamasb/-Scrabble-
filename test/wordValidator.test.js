@@ -32,6 +32,7 @@ test('server dictionary has a secret-backed AI fallback for missing Wiktionary e
   assert.ok(source.includes('OPENAI_API_KEY'));
   assert.ok(source.includes('OPENAI_DICTIONARY_MODEL'));
   assert.ok(source.includes('api.openai.com/v1/responses'));
-  assert.ok(source.includes('response_format: { type: "json_object" }'));
+  assert.ok(source.includes('type: "json_schema"'));
+  assert.ok(source.includes('store: false'));
   assert.ok(source.includes('if (!valid && openAiKey)'));
 });
