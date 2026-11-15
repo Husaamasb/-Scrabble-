@@ -50,7 +50,8 @@ test('offline game cloud saves are private to their owning authenticated account
   assert.ok(schema.includes('alter table public.scrabble_saved_games enable row level security;'));
   assert.ok(schema.includes('using ((select auth.uid())=user_id)'));
   assert.ok(schema.includes('with check ((select auth.uid())=user_id)'));
-  assert.ok(schema.includes('grant select,insert,update,delete on public.scrabble_saved_games to authenticated;'));
+  assert.ok(schema.includes('revoke all on table public.scrabble_saved_games from public, anon;'));
+  assert.ok(schema.includes('grant select,insert,update,delete on table public.scrabble_saved_games to authenticated;'));
 });
 
 test('offline sessions sync at sign-in and when the browser comes back online', () => {
