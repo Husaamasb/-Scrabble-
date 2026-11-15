@@ -145,4 +145,7 @@ test('wooden chest shows a tappable shuffled row of next tiles and resets reveal
   assert.ok(local.includes('className={\'chest-tile \'+(flipped?\'flipped\':\'face-down\')}'));
   assert.ok(local.includes('setChestFlipId(current=>current===tileId?null:tileId)'));
   assert.ok(local.includes('useEffect(()=>setChestFlipId(null),[session?.bag])'));
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes('Wooden letter chest'));
+  assert.ok(cloud.includes('onlineChestOpen&&<div className=\"chest-row cloud-rack-tiles\">'));
 });
