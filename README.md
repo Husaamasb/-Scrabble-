@@ -84,3 +84,11 @@ The online section includes global, weekly, monthly, Arabic-game, and English-ga
 ### Daily challenges
 - Daily challenge progress is generated from verified match-result records on the server (play a match, win a match, score at least 100 points in a match).
 - Rewards are claimed once per user per UTC day through an authenticated database function; clients cannot set their own progress or reward amounts.
+
+
+## Daily challenges, notifications, and store
+
+- Daily challenge progress is derived from server-recorded match results. Completed rewards are claimed through an authenticated database function.
+- In-app notifications are private to each account and delivered in realtime for friend requests, room invitations, direct messages, turn starts, finished matches, and claimed daily rewards.
+- The cosmetic store uses a server-controlled catalog, a virtual coin wallet, and a private inventory. Purchases are checked and charged in one database transaction; no real-money payments are enabled.
+- The Supabase schema includes row-level security for notification, wallet, inventory, and catalog data. The store purchase RPC checks the authenticated user and cannot be called by anonymous users.
