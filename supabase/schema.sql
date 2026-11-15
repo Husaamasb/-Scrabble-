@@ -2846,4 +2846,5 @@ create policy "players manage own saved games"
   using ((select auth.uid())=user_id)
   with check ((select auth.uid())=user_id);
 
-grant select,insert,update,delete on public.scrabble_saved_games to authenticated;
+revoke all on table public.scrabble_saved_games from public, anon;
+grant select,insert,update,delete on table public.scrabble_saved_games to authenticated;
