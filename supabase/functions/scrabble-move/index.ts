@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.57.0";
+import { withSupabase } from "npm:@supabase/server@1.6.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -147,23 +147,13 @@ async function dictionaryEntry(word: string, language: "ar" | "en") {
   return Boolean(page && !page.missing && !page.invalid);
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSupabase({ auth: "user" }, async (req, ctx) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
   try {
-    const url = Deno.env.get("SUPABASE_URL");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!url || !anonKey || !serviceKey) return json({ error: "Server configuration is incomplete." }, 500);
-
-    const authorization = req.headers.get("Authorization");
-    if (!authorization?.startsWith("Bearer ")) return json({ error: "Sign in required." }, 401);
-    const token = authorization.slice(7);
-    const userClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: userData, error: userError } = await userClient.auth.getUser(token);
-    if (userError || !userData.user) return json({ error: "Your session is invalid or expired." }, 401);
-    const actor = userData.user.id;
+    const actor = ctx.userClaims?.sub;
+    if (!actor) return json({ error: "Sign in required." }, 401);
 
     const body = await req.json();
     const roomId = String(body?.room_id ?? "");
@@ -173,7 +163,7 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid move request." }, 400);
     }
 
-    const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const admin = ctx.supabaseAdmin;
     const [{ data: room, error: roomError }, { data: privateRow, error: privateError }, { data: member, error: memberError }] = await Promise.all([
       admin.from("rooms").select("id,language,status,game_state").eq("id", roomId).single(),
       admin.from("room_player_private").select("private_state").eq("room_id", roomId).eq("user_id", actor).single(),
@@ -216,4 +206,4 @@ Deno.serve(async (req) => {
     console.error("scrabble-move:", error);
     return json({ error: error instanceof Error ? error.message : "Could not validate this move." }, 500);
   }
-});
+}));
