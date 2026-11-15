@@ -17,3 +17,11 @@ test('admin room action can only close waiting rooms',()=>{
  assert.ok(body.includes('public.is_scrabble_admin()'));
  assert.ok(body.includes("status='waiting'"));
 });
+
+test('admins can manage schedule, prizes, and spectator access before tournament start',()=>{
+ assert.ok(schema.includes('admin_set_scrabble_tournament_details'));
+ assert.ok(schema.includes('admins update tournament details'));
+ assert.ok(admin.includes("supabase.rpc('admin_set_scrabble_tournament_details'"));
+ assert.ok(admin.includes('name="spectators_enabled"'));
+ assert.ok(admin.includes('name="starts_at"'));
+});
