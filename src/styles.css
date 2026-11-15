@@ -159,3 +159,5 @@
 .cloud-leaderboard-tabs button.active{font-weight:700;outline:2px solid currentColor;outline-offset:1px}
 .cloud-leader-row span{display:flex;flex-direction:column;gap:3px}
 .cloud-leader-row small{opacity:.72;font-size:.82em}
+
+.friend-qr{display:grid;justify-items:center;gap:10px;padding:18px;margin:12px 0;background:linear-gradient(145deg,#f7ecd8,#e5d0ad);border:2px solid #a77b4b;border-radius:14px;color:#49311f;text-align:center}.friend-qr h3,.friend-qr p{margin:0}.friend-qr img{display:block;padding:8px;background:#fff;border:1px solid #c9b28f;border-radius:10px;image-rendering:auto}.friend-qr strong{font-size:18px;letter-spacing:2px}.friend-qr button{border:1px solid #9d7a54;background:#f4e8d2;color:#4b3323;border-radius:10px;padding:9px 13px;font-weight:700;cursor:pointer}.cloud-panel .friend-qr{max-width:360px;margin-inline:auto}
