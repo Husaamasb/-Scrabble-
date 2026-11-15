@@ -797,10 +797,10 @@ AS $function$
 $function$
 
 create or replace function public.start_scrabble_room(target_room uuid)
- RETURNS rooms
+ RETURNS public.rooms
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path = ''
 AS $function$
 declare
   target public.rooms;
@@ -857,14 +857,47 @@ begin
     select target_room, row_number() over(order by random())::integer,
       jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
     from (values
-      ('ا',1,8),('إ',1,2),('أ',1,2),('آ',8,1),('ب',1,4),('ج',1,3),
-      ('ح',1,3),('خ',1,3),('د',1,3),('ذ',1,3),('ش',2,3),('ص',2,3),
-      ('ض',3,3),('ط',2,2),('ظ',4,2),('ق',2,3),('ك',3,3),('ل',1,3),
-      ('لا',2,2),('لإ',3,1),('ن',1,3),('ه',1,3),('و',1,3),('ؤ',10,1),
-      ('ي',1,3),('ء',8,1),('ئ أول الكلمة',10,2),('★',0,2),('ت',1,4),
-      ('ة',5,1),('ث',1,3),('ر',1,3),('ز',2,3),('س',1,3),('ع',2,3),
-      ('غ',4,3),('ف',1,3),('لأ',3,1),('لآ',3,1),('م',1,4),('يء',5,1),
-      ('ى',3,1),('ئ',8,1)
+      ('ا',1,8),
+      ('أ',1,2),
+      ('إ',1,2),
+      ('آ',8,1),
+      ('ب',1,4),
+      ('ت',1,4),
+      ('ة',5,1),
+      ('ث',1,3),
+      ('ج',1,3),
+      ('ح',1,3),
+      ('خ',1,3),
+      ('د',1,3),
+      ('ذ',1,3),
+      ('ر',2,3),
+      ('ز',2,3),
+      ('س',1,3),
+      ('ش',2,3),
+      ('ص',2,3),
+      ('ض',3,3),
+      ('ط',2,2),
+      ('ظ',4,2),
+      ('ع',2,3),
+      ('غ',4,3),
+      ('ف',1,3),
+      ('ق',2,3),
+      ('ك',3,3),
+      ('ل',1,3),
+      ('لا',2,2),
+      ('لأ',3,1),
+      ('لآ',3,1),
+      ('لإ',3,1),
+      ('م',1,4),
+      ('ن',1,3),
+      ('ه',1,3),
+      ('و',1,3),
+      ('ؤ',10,1),
+      ('ي',1,3),
+      ('ى',3,1),
+      ('ء',8,1),
+      ('ئ أول الكلمة',10,2),
+      ('★',0,2)
     ) as v(letter,points,quantity)
     cross join lateral generate_series(1,v.quantity);
   else
@@ -1007,7 +1040,7 @@ begin
     where id=target_room returning * into target;
   return target;
 end;
-$function$
+$function$;
 
 grant execute on function public.start_scrabble_room(uuid) to authenticated;
 
