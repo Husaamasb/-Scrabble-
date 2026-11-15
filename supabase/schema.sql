@@ -2472,3 +2472,38 @@ end;
 $function$;
 revoke all on function public.admin_close_scrabble_waiting_room(uuid) from public,anon;
 grant execute on function public.admin_close_scrabble_waiting_room(uuid) to authenticated;
+
+
+-- Harden the new admin/tournament RPCs with invoker rights and narrow grants.
+grant update(scheduled_at,prize_xp,prize_coins,spectators_enabled) on public.scrabble_tournaments to authenticated;
+drop policy if exists "tournament hosts update schedule" on public.scrabble_tournaments;
+create policy "tournament hosts update schedule" on public.scrabble_tournaments for update to authenticated
+using(owner_id=auth.uid() and status='registration') with check(owner_id=auth.uid() and status='registration');
+create or replace function public.set_scrabble_tournament_details(target_tournament uuid,starts_at timestamptz,reward_xp integer,reward_coins integer,allow_spectators boolean)
+returns void language plpgsql security invoker set search_path=''
+as $function$
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ if reward_xp not between 0 and 100000 or reward_coins not between 0 and 100000 then raise exception 'Tournament rewards are out of range'; end if;
+ update public.scrabble_tournaments set scheduled_at=starts_at,prize_xp=reward_xp,prize_coins=reward_coins,spectators_enabled=coalesce(allow_spectators,true)
+ where id=target_tournament and owner_id=auth.uid() and status='registration';
+ if not found then raise exception 'Only the tournament host can edit an open tournament'; end if;
+end;
+$function$;
+revoke all on function public.set_scrabble_tournament_details(uuid,timestamptz,integer,integer,boolean) from public,anon;
+grant execute on function public.set_scrabble_tournament_details(uuid,timestamptz,integer,integer,boolean) to authenticated;
+grant update(status) on public.rooms to authenticated;
+drop policy if exists "admins can close waiting rooms" on public.rooms;
+create policy "admins can close waiting rooms" on public.rooms for update to authenticated
+using(public.is_scrabble_admin() and status='waiting') with check(public.is_scrabble_admin() and status='finished');
+create or replace function public.admin_close_scrabble_waiting_room(target_room uuid)
+returns void language plpgsql security invoker set search_path=''
+as $function$
+begin
+ if auth.uid() is null or not public.is_scrabble_admin() then raise exception 'Administrator access required'; end if;
+ update public.rooms set status='finished' where id=target_room and status='waiting';
+ if not found then raise exception 'Only waiting rooms can be closed by an administrator'; end if;
+end;
+$function$;
+revoke all on function public.admin_close_scrabble_waiting_room(uuid) from public,anon;
+grant execute on function public.admin_close_scrabble_waiting_room(uuid) to authenticated;
