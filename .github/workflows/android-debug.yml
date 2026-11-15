@@ -28,7 +28,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          if [ -z "$SDKMANAGER" ]; then echo "Android SDK manager not found"; exit 1; fi
+          yes | "$SDKMANAGER" --licenses || true
 
       - name: Install JavaScript dependencies
         run: npm install
