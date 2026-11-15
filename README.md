@@ -34,7 +34,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
 - Supabase integration: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated pass and tile-exchange actions. The cloud board remains read-only until authoritative word validation, placement, scoring, and rack refill are implemented.
-- Capacitor configuration and native build instructions for Android and iOS.
+- Capacitor Android/iOS support plus an automated macOS GitHub Actions build for the iOS Simulator.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
 
 ## Still required for a complete release
@@ -59,7 +59,7 @@ for English.
 
 ## Native Android and iOS builds
 
-See [NATIVE_BUILDS.md](NATIVE_BUILDS.md) for the Capacitor setup and platform build steps.
+See [NATIVE_BUILDS.md](NATIVE_BUILDS.md) for the Capacitor setup and platform build steps. The `Build Scrabble for iOS Simulator` workflow automatically builds an unsigned simulator app on macOS and uploads it as a 14-day artifact; it is not an App Store IPA.
 An Android APK is not installable on iPhone/iPad; iOS requires a signed iOS build.
 
 
@@ -78,4 +78,4 @@ Run `npm test` to execute the automated board, move-validation, scoring, and til
 Completed online matches are settled server-side. Final scores determine wins, draws, and losses; XP changes by +20 for a win, +15 for a draw, and -5 for a loss (XP never falls below zero). The profile shows progression totals and the player's own recent match history. Match-result rows are protected by RLS, and clients cannot directly change XP or match counters.
 
 
-The online section also displays a global XP leaderboard for profiles whose privacy is set to Everyone, ordered by XP and then wins. Weekly, monthly, and per-game leaderboards are still future work.
+The online section includes global, weekly, monthly, Arabic-game, and English-game XP leaderboards. Period rankings use privacy-filtered aggregate records; raw match history remains private.
