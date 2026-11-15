@@ -31,7 +31,13 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     const runBot=async()=>{
       setBusy(true);setMessage(ar?'الكمبيوتر يفكر بحركته…':'The bot is thinking…');
       try{
-        const aiWords=await requestBotWords(session).catch(()=>[]);\n        if(cancelled)return;\n        const aiMoves=aiWords.length?findBotMoves(session,aiWords):[];\n        const fallbackMoves=findBotMoves(session);\n        const moveMap=new Map();\n        for(const move of [...aiMoves,...fallbackMoves]){const key=move.word+':'+move.placements.map(p=>p.row*15+p.col).sort((a,b)=>a-b).join(',');if(!moveMap.has(key))moveMap.set(key,move);}\n        const moves=orderBotMoves([...moveMap.values()].sort((a,b)=>b.points-a.points),difficulty);
+        const aiWords=await requestBotWords(session).catch(()=>[]);
+        if(cancelled)return;
+        const aiMoves=aiWords.length?findBotMoves(session,aiWords):[];
+        const fallbackMoves=findBotMoves(session);
+        const moveMap=new Map();
+        for(const move of [...aiMoves,...fallbackMoves]){const key=move.word+':'+move.placements.map(p=>p.row*15+p.col).sort((a,b)=>a-b).join(',');if(!moveMap.has(key))moveMap.set(key,move);}
+        const moves=orderBotMoves([...moveMap.values()].sort((a,b)=>b.points-a.points),difficulty);
         for(const move of moves){
           if(cancelled)return;
           const result=await commitTurn(session,move.placements,createHybridDictionaryValidator());
