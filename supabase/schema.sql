@@ -2416,3 +2416,59 @@ revoke all on function public.award_scrabble_tournament_prize() from public,anon
 drop trigger if exists award_scrabble_tournament_prize on public.scrabble_tournaments;
 create trigger award_scrabble_tournament_prize after update of status on public.scrabble_tournaments
 for each row when(old.status<>'completed' and new.status='completed') execute function public.award_scrabble_tournament_prize();
+
+
+-- Secure admin role is read only from server-managed app_metadata, never user_metadata.
+create or replace function public.is_scrabble_admin()
+returns boolean language sql stable security invoker set search_path=''
+as $function$ select coalesce(auth.jwt()->'app_metadata'->>'scrabble_admin','false')='true'; $function$;
+revoke all on function public.is_scrabble_admin() from public,anon;
+grant execute on function public.is_scrabble_admin() to authenticated;
+drop policy if exists "scrabble admins can read all profiles" on public.profiles;
+create policy "scrabble admins can read all profiles" on public.profiles for select to authenticated using(public.is_scrabble_admin());
+drop policy if exists "scrabble admins can read all rooms" on public.rooms;
+create policy "scrabble admins can read all rooms" on public.rooms for select to authenticated using(public.is_scrabble_admin());
+drop policy if exists "scrabble admins can read all room members" on public.room_members;
+create policy "scrabble admins can read all room members" on public.room_members for select to authenticated using(public.is_scrabble_admin());
+create table if not exists public.scrabble_player_reports(
+ id uuid primary key default gen_random_uuid(), reporter_id uuid not null references public.profiles(id) on delete cascade,
+ target_user_id uuid references public.profiles(id) on delete set null, room_id uuid references public.rooms(id) on delete set null,
+ category text not null check(category in ('cheating','abuse','inappropriate_name','other')),
+ details text not null check(char_length(details) between 5 and 1000),
+ status text not null default 'open' check(status in ('open','in_review','resolved','dismissed')),
+ created_at timestamptz not null default now(), reviewed_by uuid references public.profiles(id) on delete set null, reviewed_at timestamptz
+);
+create index if not exists scrabble_player_reports_status_created_idx on public.scrabble_player_reports(status,created_at desc);
+alter table public.scrabble_player_reports enable row level security;
+revoke all on public.scrabble_player_reports from public,anon,authenticated;
+grant select,insert,update on public.scrabble_player_reports to authenticated;
+drop policy if exists "players create own reports" on public.scrabble_player_reports;
+create policy "players create own reports" on public.scrabble_player_reports for insert to authenticated with check(reporter_id=auth.uid());
+drop policy if exists "players read own reports and admins read all" on public.scrabble_player_reports;
+create policy "players read own reports and admins read all" on public.scrabble_player_reports for select to authenticated using(reporter_id=auth.uid() or public.is_scrabble_admin());
+drop policy if exists "admins review reports" on public.scrabble_player_reports;
+create policy "admins review reports" on public.scrabble_player_reports for update to authenticated using(public.is_scrabble_admin()) with check(public.is_scrabble_admin());
+create table if not exists public.scrabble_dictionary_overrides(
+ language text not null check(language in ('ar','en')), word text not null check(char_length(word) between 1 and 80),
+ is_valid boolean not null, note text not null default '' check(char_length(note)<=300),
+ updated_by uuid not null references public.profiles(id), updated_at timestamptz not null default now(), primary key(language,word)
+);
+alter table public.scrabble_dictionary_overrides enable row level security;
+revoke all on public.scrabble_dictionary_overrides from public,anon,authenticated;
+grant select,insert,update,delete on public.scrabble_dictionary_overrides to authenticated;
+drop policy if exists "admins manage dictionary overrides" on public.scrabble_dictionary_overrides;
+create policy "admins manage dictionary overrides" on public.scrabble_dictionary_overrides for all to authenticated using(public.is_scrabble_admin()) with check(public.is_scrabble_admin() and updated_by=auth.uid());
+drop policy if exists "admins can read dictionary cache" on public.scrabble_dictionary_cache;
+grant select on public.scrabble_dictionary_cache to authenticated;
+create policy "admins can read dictionary cache" on public.scrabble_dictionary_cache for select to authenticated using(public.is_scrabble_admin());
+create or replace function public.admin_close_scrabble_waiting_room(target_room uuid)
+returns void language plpgsql security definer set search_path=''
+as $function$
+begin
+ if auth.uid() is null or not public.is_scrabble_admin() then raise exception 'Administrator access required'; end if;
+ update public.rooms set status='finished' where id=target_room and status='waiting';
+ if not found then raise exception 'Only waiting rooms can be closed by an administrator'; end if;
+end;
+$function$;
+revoke all on function public.admin_close_scrabble_waiting_room(uuid) from public,anon;
+grant execute on function public.admin_close_scrabble_waiting_room(uuid) to authenticated;
