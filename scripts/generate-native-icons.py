@@ -21,7 +21,7 @@ if android.exists():
         "xxhdpi": 144,
         "xxxhdpi": 192,
     }.items():
-        folder = android / f"mipmap-{density}-v4"
+        folder = android / f"mipmap-{density}"
         save_icon(folder / "ic_launcher.png", size)
         save_icon(folder / "ic_launcher_round.png", size)
 
@@ -31,7 +31,7 @@ if android.exists():
     foreground = Image.new("RGBA", (foreground_size, foreground_size), (0, 0, 0, 0))
     foreground.alpha_composite(foreground_art, ((foreground_size - foreground_art.width) // 2,
                                                  (foreground_size - foreground_art.height) // 2))
-    fg_dir = android / "mipmap-xxxhdpi-v4"
+    fg_dir = android / "mipmap-xxxhdpi"
     fg_dir.mkdir(parents=True, exist_ok=True)
     foreground.save(fg_dir / "ic_launcher_foreground.png", "PNG", optimize=True)
 
