@@ -1,4 +1,4 @@
-import { withSupabase } from "npm:@supabase/server@1.6.1";
+import { createSupabaseContext } from "npm:@supabase/server@1.6.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -169,11 +169,15 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
   return valid;
 }
 
-Deno.serve(withSupabase({ auth: "user" }, async (req, ctx) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
   try {
+    const { data: ctx, error: contextError } = await createSupabaseContext(req, { auth: "user" });
+    if (contextError || !ctx) {
+      return json({ error: contextError?.message || "Sign in required." }, contextError?.status || 401);
+    }
     const actor = ctx.userClaims?.sub;
     if (!actor) return json({ error: "Sign in required." }, 401);
 
@@ -228,4 +232,4 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, ctx) => {
     console.error("scrabble-move:", error);
     return json({ error: error instanceof Error ? error.message : "Could not validate this move." }, 500);
   }
-}));
+}});
