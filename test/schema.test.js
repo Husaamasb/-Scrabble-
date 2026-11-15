@@ -139,7 +139,7 @@ test('gifts transfer owned cosmetics only between friends and notify the recipie
   assert.ok(cloud.includes('giftReceived'));
 });
 
-test('wooden chest displays the player's own rack without exposing the bot rack',()=>{
+test("wooden chest displays the player's own rack without exposing the bot rack",()=>{
   const local=readFileSync(new URL('../src/LocalTable.jsx',import.meta.url),'utf8');
   assert.ok(local.includes('player.rack.map(tile=>'));
   assert.ok(local.includes('const humanTurn=!botMode||session.currentPlayer===0;'));
