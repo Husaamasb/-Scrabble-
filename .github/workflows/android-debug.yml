@@ -61,6 +61,29 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
+      - name: Install and launch APK in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell monkey -p com.husaamasb.scrabble 1
+            sleep 12
+            adb shell pidof com.husaamasb.scrabble
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep 'com.husaamasb.scrabble'
+            adb shell screencap -p /sdcard/scrabble-emulator.png
+            adb pull /sdcard/scrabble-emulator.png "$GITHUB_WORKSPACE/scrabble-emulator.png"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scrabble-Android-Emulator-Screenshot
+          path: scrabble-emulator.png
+          if-no-files-found: error
+          retention-days: 14
+
       - uses: actions/upload-artifact@v4
         with:
           name: Scrabble-Android-Debug
