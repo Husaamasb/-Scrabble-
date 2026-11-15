@@ -1994,7 +1994,10 @@ create policy "players read their own match results"
   using ((select auth.uid())=user_id);
 
 create or replace function public.record_scrabble_match_result()
-returns trigger language plpgsql security definer set search_path=''
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
 as $function$
 declare
   score_map jsonb;
@@ -2020,10 +2023,7 @@ begin
     from public.room_members m
     where m.room_id=new.id and not m.is_withdrawn
   loop
-    if new.game_state->>'finish_reason'='tiles_exhausted'
-       and nullif(new.game_state->>'finisher','')::uuid=participant.user_id then
-      final_outcome := 'win';
-    elsif participant.score=best_score and best_count>1 then final_outcome := 'draw';
+    if participant.score=best_score and best_count>1 then final_outcome := 'draw';
     elsif participant.score=best_score then final_outcome := 'win';
     else final_outcome := 'loss';
     end if;
