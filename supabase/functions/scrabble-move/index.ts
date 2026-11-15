@@ -155,20 +155,28 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
     formatversion: "2",
     titles: normalized,
   }).toString();
-  const response = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "ScrabbleArabic/0.2.0" },
-  });
-  if (!response.ok) throw new Error("Dictionary service returned " + response.status + ".");
-  const data = await response.json();
-  const page = data?.query?.pages?.[0];
-  let valid = Boolean(page && !page.missing && !page.invalid);
+  let valid = false;
+  let wiktionaryAvailable = false;
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json", "User-Agent": "ScrabbleArabic/0.3.0" },
+      signal: AbortSignal.timeout(4500),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const page = data?.query?.pages?.[0];
+      valid = Boolean(page && !page.missing && !page.invalid);
+      wiktionaryAvailable = true;
+    }
+  } catch (lookupError) {
+    console.warn("Wiktionary lookup failed:", lookupError);
+  }
 
-  // If Wiktionary has no exact page, ask the configured AI lexicon reviewer.
-  // The key is server-only; the browser never receives it.
+  let aiChecked = false;
   const openAiKey = Deno.env.get("OPENAI_API_KEY");
   if (!valid && openAiKey) {
     try {
-      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResponse = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + openAiKey,
@@ -176,42 +184,52 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
         },
         body: JSON.stringify({
           model: Deno.env.get("OPENAI_DICTIONARY_MODEL") || "gpt-4.1-mini",
-          temperature: 0,
-          max_completion_tokens: 120,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: "You are a conservative Scrabble dictionary adjudicator. Decide whether the exact supplied string is a recognized standalone lexical word in the specified language. Accept standard dictionary headwords and ordinary inflected forms. Reject proper names, abbreviations, phrases, typos, invented strings, and uncertain cases. Do not translate or repair the spelling. Return only JSON with one boolean field: valid.",
+          store: false,
+          max_output_tokens: 80,
+          instructions: "You are a conservative bilingual Scrabble lexicon adjudicator. Decide whether the exact supplied string is a recognized standalone lexical word in the specified language. Accept established dictionary headwords and ordinary inflected forms. Reject proper names, abbreviations, phrases, typos, invented strings, and uncertain cases. Do not translate, transliterate, repair, or add diacritics. If unsure, valid must be false. Return only the requested JSON object.",
+          input: JSON.stringify({
+            language: language === "ar" ? "Arabic" : "English",
+            exact_word: normalized,
+          }),
+          text: {
+            format: {
+              type: "json_schema",
+              name: "scrabble_word_verdict",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: { valid: { type: "boolean" } },
+                required: ["valid"],
+                additionalProperties: false,
+              },
             },
-            {
-              role: "user",
-              content: JSON.stringify({ language: language === "ar" ? "Arabic" : "English", exact_word: normalized }),
-            },
-          ],
+          },
         }),
       });
-      if (aiResponse.ok) {
-        const aiData = await aiResponse.json();
-        const content = aiData?.choices?.[0]?.message?.content;
-        if (typeof content === "string") {
-          const verdict = JSON.parse(content);
-          valid = verdict?.valid === true;
-        }
-      } else {
-        console.error("AI dictionary request failed:", aiResponse.status);
-      }
+      if (!aiResponse.ok) throw new Error("AI dictionary request failed: " + aiResponse.status);
+      const aiData = await aiResponse.json();
+      const content = (aiData?.output ?? [])
+        .filter((item: any) => item?.type === "message")
+        .flatMap((item: any) => item?.content ?? [])
+        .find((item: any) => item?.type === "output_text")?.text;
+      if (typeof content !== "string") throw new Error("AI dictionary returned no structured verdict.");
+      const verdict = JSON.parse(content);
+      if (typeof verdict?.valid !== "boolean") throw new Error("AI dictionary verdict was malformed.");
+      valid = verdict.valid;
+      aiChecked = true;
     } catch (aiError) {
       console.error("AI dictionary fallback failed:", aiError);
     }
   }
 
-  await admin.from("scrabble_dictionary_cache").upsert({
+  // Never cache a negative result when both providers were unavailable.
+  if (valid || wiktionaryAvailable || aiChecked) {
+    await admin.from("scrabble_dictionary_cache").upsert({
     language,
     word: normalized,
     is_valid: valid,
     checked_at: new Date().toISOString(),
-  }, { onConflict: "language,word" });
+    }, { onConflict: "language,word" });
   return valid;
 }
 
