@@ -1,0 +1,35 @@
+import React,{useCallback,useEffect,useState} from 'react';
+import {supabase} from './cloud/supabase.js';
+export default function AdminPanel({user,language}){
+ const ar=language==='ar',tr=(a,e)=>ar?a:e,allowed=user?.app_metadata?.scrabble_admin===true;
+ const [tab,setTab]=useState('players'),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
+ const [players,setPlayers]=useState([]),[rooms,setRooms]=useState([]),[reports,setReports]=useState([]),[overrides,setOverrides]=useState([]),[tournaments,setTournaments]=useState([]);
+ const [word,setWord]=useState(''),[wordLanguage,setWordLanguage]=useState('ar'),[wordValid,setWordValid]=useState(true),[wordNote,setWordNote]=useState('');
+ const load=useCallback(async()=>{if(!allowed)return;setBusy(true);setNotice('');try{
+  const [p,r,rep,o,t]=await Promise.all([
+   supabase.from('profiles').select('id,public_id,username,xp,wins,losses').order('xp',{ascending:false}).limit(100),
+   supabase.from('rooms').select('id,code,name,status,host_id,max_players,created_at').order('created_at',{ascending:false}).limit(100),
+   supabase.from('scrabble_player_reports').select('id,reporter_id,target_user_id,room_id,category,details,status,created_at').order('created_at',{ascending:false}).limit(100),
+   supabase.from('scrabble_dictionary_overrides').select('*').order('updated_at',{ascending:false}).limit(100),
+   supabase.from('scrabble_tournaments').select('id,name,status,scheduled_at,prize_xp,prize_coins,champion_id').order('created_at',{ascending:false}).limit(100)
+  ]);const err=p.error||r.error||rep.error||o.error||t.error;if(err)throw err;
+  setPlayers(p.data||[]);setRooms(r.data||[]);setReports(rep.data||[]);setOverrides(o.data||[]);setTournaments(t.data||[]);
+ }catch(e){setNotice(e.message||tr('تعذر تحميل بيانات الإدارة','Could not load admin data'));}finally{setBusy(false);}},[allowed]);
+ useEffect(()=>{load();},[load]);
+ const closeRoom=async id=>{setBusy(true);try{const {error}=await supabase.rpc('admin_close_scrabble_waiting_room',{target_room:id});if(error)throw error;await load();}catch(e){setNotice(e.message);}finally{setBusy(false);}};
+ const review=async(id,status)=>{setBusy(true);try{const {error}=await supabase.from('scrabble_player_reports').update({status,reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq('id',id);if(error)throw error;await load();}catch(e){setNotice(e.message);}finally{setBusy(false);}};
+ const saveOverride=async()=>{if(!word.trim())return;setBusy(true);try{const {error}=await supabase.from('scrabble_dictionary_overrides').upsert({language:wordLanguage,word:word.trim(),is_valid:wordValid,note:wordNote.trim(),updated_by:user.id,updated_at:new Date().toISOString()},{onConflict:'language,word'});if(error)throw error;setWord('');setWordNote('');await load();}catch(e){setNotice(e.message);}finally{setBusy(false);}};
+ const removeOverride=async row=>{setBusy(true);try{const {error}=await supabase.from('scrabble_dictionary_overrides').delete().eq('language',row.language).eq('word',row.word);if(error)throw error;await load();}catch(e){setNotice(e.message);}finally{setBusy(false);}};
+ if(!allowed)return <section className="admin-panel"><h3>{tr('لوحة تحكم الإدارة','Admin dashboard')}</h3><p>{tr('الوصول غير مفعّل لهذا الحساب. صلاحية الإدارة تُمنح من app_metadata فقط.','Admin access is not enabled. Admin permission is granted only through app_metadata.')}</p></section>;
+ const tabs=[['players',tr('اللاعبون','Players')],['rooms',tr('الغرف','Rooms')],['reports',tr('البلاغات','Reports')],['dictionary',tr('القاموس','Dictionary')],['tournaments',tr('البطولات','Tournaments')]];
+ return <section className="admin-panel" dir={ar?'rtl':'ltr'}>
+  <header><div><h3>{tr('لوحة تحكم الإدارة','Admin dashboard')}</h3><p>{tr('صلاحية موثقة من بيانات الحساب الآمنة','Permission verified from secure account metadata')}</p></div><button type="button" disabled={busy} onClick={load}>{tr('تحديث','Refresh')}</button></header>
+  <nav className="admin-tabs">{tabs.map(([id,label])=><button type="button" key={id} className={tab===id?'active':''} onClick={()=>setTab(id)}>{label}</button>)}</nav>
+  {notice&&<p className="admin-notice">{notice}</p>}
+  {tab==='players'&&<div className="admin-list">{players.map(p=><article key={p.id}><b>{p.username}</b><span>ID: {p.public_id} · XP {p.xp||0} · {p.wins||0}W / {p.losses||0}L</span></article>)}{!players.length&&<p>{tr('ما فيه لاعبين','No players')}</p>}</div>}
+  {tab==='rooms'&&<div className="admin-list">{rooms.map(r=><article key={r.id}><b>{r.name||r.code}</b><span>{r.status} · {r.max_players} · {r.code}</span>{r.status==='waiting'&&<button type="button" disabled={busy} onClick={()=>closeRoom(r.id)}>{tr('إغلاق الغرفة','Close room')}</button>}</article>)}{!rooms.length&&<p>{tr('ما فيه غرف','No rooms')}</p>}</div>}
+  {tab==='reports'&&<div className="admin-list">{reports.map(r=><article key={r.id}><b>{r.category} · {r.status}</b><span>{r.details}</span><small>{r.target_user_id||'—'} · {new Date(r.created_at).toLocaleString(ar?'ar-SA':'en-US')}</small><div className="admin-actions"><button type="button" disabled={busy} onClick={()=>review(r.id,'in_review')}>{tr('قيد المراجعة','Reviewing')}</button><button type="button" disabled={busy} onClick={()=>review(r.id,'resolved')}>{tr('حل البلاغ','Resolve')}</button><button type="button" disabled={busy} onClick={()=>review(r.id,'dismissed')}>{tr('رفض','Dismiss')}</button></div></article>)}{!reports.length&&<p>{tr('ما فيه بلاغات','No reports')}</p>}</div>}
+  {tab==='dictionary'&&<><div className="admin-dictionary-form"><select value={wordLanguage} onChange={e=>setWordLanguage(e.target.value)}><option value="ar">العربية</option><option value="en">English</option></select><input value={word} onChange={e=>setWord(e.target.value)} placeholder={tr('الكلمة','Word')}/><select value={String(wordValid)} onChange={e=>setWordValid(e.target.value==='true')}><option value="true">{tr('كلمة صحيحة','Valid word')}</option><option value="false">{tr('كلمة غير صحيحة','Invalid word')}</option></select><input value={wordNote} onChange={e=>setWordNote(e.target.value)} placeholder={tr('ملاحظة','Note')}/><button type="button" disabled={busy||!word.trim()} onClick={saveOverride}>{tr('حفظ التعديل','Save override')}</button></div><div className="admin-list">{overrides.map(row=><article key={row.language+row.word}><b>{row.word} · {row.language}</b><span>{row.is_valid?tr('مقبولة','Accepted'):tr('مرفوضة','Rejected')} · {row.note}</span><button type="button" disabled={busy} onClick={()=>removeOverride(row)}>{tr('حذف التعديل','Remove override')}</button></article>)}</div></>}
+  {tab==='tournaments'&&<div className="admin-list">{tournaments.map(t=><article key={t.id}><b>{t.name}</b><span>{t.status} · {t.scheduled_at?new Date(t.scheduled_at).toLocaleString(ar?'ar-SA':'en-US'):tr('بدون موعد','Unscheduled')} · {t.prize_xp} XP · {t.prize_coins} ◉</span></article>)}</div>}
+ </section>;
+}
