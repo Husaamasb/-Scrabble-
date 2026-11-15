@@ -22,6 +22,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
   const [mode,setMode]=useState('local');
   const cells=useMemo(()=>Array.from({length:225},(_,i)=>i),[]);
   useEffect(()=>{try{const key=localSessionKey(language,botMode);if(session)globalThis.localStorage?.setItem(key,JSON.stringify({version:1,session}));else globalThis.localStorage?.removeItem(key);}catch{}},[session,language,botMode]);
+  useEffect(()=>setChestFlipId(null),[session?.bag]);
   const ar=language==='ar';
   const start=()=>{const game=createGameSession(language,botMode?['أنت','البوت']:names.slice(0,count));game.matchId=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);setSession(game);setPending([]);setSelected(null);setExchange([]);setMessage('');};
   useEffect(()=>{
