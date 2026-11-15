@@ -42,6 +42,21 @@ test('Supabase server distributions exactly match the browser tile tables',()=>{
   }
 });
 
+
+test('wooden chest tiles stay in one horizontal row and reveal on tap in local and online games',()=>{
+  const local=readFileSync(new URL('../src/LocalTable.jsx',import.meta.url),'utf8');
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  const styles=readFileSync(new URL('../src/styles.css',import.meta.url),'utf8');
+  for(const source of [local,cloud]){
+    assert.ok(source.includes("'face-down'"),'unrevealed tiles must show their backs');
+    assert.ok(source.includes("'revealed'"),'revealed tiles must show their faces');
+    assert.ok(source.includes("'؟'"),'the back must not expose the letter');
+    assert.ok(source.includes('setRevealed'),'tapping a tile must reveal it');
+  }
+  assert.ok(styles.includes('.chest-row{display:flex;gap:8px;overflow-x:auto'));
+  assert.ok(styles.includes('.cloud-rack-tiles{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto'));
+});
+
 test('draw returns the requested number and leaves the rest in the bag',()=>{
   const bag=createTileBag('en',()=>0.25);
   const result=drawTiles(bag,7);
