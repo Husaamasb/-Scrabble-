@@ -14,26 +14,24 @@ def save_icon(path: Path, size: int):
 
 android = ROOT / "android" / "app" / "src" / "main" / "res"
 if android.exists():
-    for density, size in {
-        "mdpi": 48,
-        "hdpi": 72,
-        "xhdpi": 96,
-        "xxhdpi": 144,
-        "xxxhdpi": 192,
-    }.items():
+    for density, icon_size, adaptive_size in [
+        ("mdpi", 48, 108),
+        ("hdpi", 72, 162),
+        ("xhdpi", 96, 216),
+        ("xxhdpi", 144, 324),
+        ("xxxhdpi", 192, 432),
+    ]:
         folder = android / f"mipmap-{density}"
-        save_icon(folder / "ic_launcher.png", size)
-        save_icon(folder / "ic_launcher_round.png", size)
+        save_icon(folder / "ic_launcher.png", icon_size)
+        save_icon(folder / "ic_launcher_round.png", icon_size)
 
-    # Adaptive-icon foreground: keep the complete original artwork inside Android's safe zone.
-    foreground_size = 432
-    foreground_art = ImageOps.contain(image, (288, 288), method=Image.Resampling.LANCZOS)
-    foreground = Image.new("RGBA", (foreground_size, foreground_size), (0, 0, 0, 0))
-    foreground.alpha_composite(foreground_art, ((foreground_size - foreground_art.width) // 2,
-                                                 (foreground_size - foreground_art.height) // 2))
-    fg_dir = android / "mipmap-xxxhdpi"
-    fg_dir.mkdir(parents=True, exist_ok=True)
-    foreground.save(fg_dir / "ic_launcher_foreground.png", "PNG", optimize=True)
+        # Adaptive foreground artwork stays inside Android's two-thirds safe zone.
+        safe_size = round(adaptive_size * 2 / 3)
+        foreground_art = ImageOps.contain(image, (safe_size, safe_size), method=Image.Resampling.LANCZOS)
+        foreground = Image.new("RGBA", (adaptive_size, adaptive_size), (0, 0, 0, 0))
+        foreground.alpha_composite(foreground_art, ((adaptive_size - foreground_art.width) // 2,
+                                                     (adaptive_size - foreground_art.height) // 2))
+        foreground.save(folder / "ic_launcher_foreground.png", "PNG", optimize=True)
 
     adaptive_dir = android / "mipmap-anydpi-v26"
     adaptive_dir.mkdir(parents=True, exist_ok=True)
