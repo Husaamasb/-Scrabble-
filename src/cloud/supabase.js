@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 const env = import.meta.env || {};
-const url = env.VITE_SUPABASE_URL?.trim();
-const anonKey = env.VITE_SUPABASE_ANON_KEY?.trim();
+
+// Supabase project URL and publishable key are public client configuration.
+// RLS and database grants remain the authorization boundary.
+const url = env.VITE_SUPABASE_URL?.trim() || 'https://rwcwuxraekgpaeujhxbg.supabase.co';
+const anonKey = env.VITE_SUPABASE_ANON_KEY?.trim() || 'sb_publishable_r3-46V9HEuoTquTtFXKgeA_b0ZQlMi7';
 
 export const isCloudConfigured = Boolean(url && anonKey);
 export const supabase = isCloudConfigured
