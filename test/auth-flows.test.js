@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
 const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
+const authClient=readFileSync(new URL('../src/cloud/supabase.js',import.meta.url),'utf8');
 test('account UI wires email OTP, password recovery, and Google/Apple OAuth flows',()=>{
- for(const api of ['auth.signUp','auth.verifyOtp','auth.signInWithPassword','auth.signInWithOtp','auth.resetPasswordForEmail','auth.signInWithOAuth','auth.updateUser']) assert.ok(cloud.includes(api),api);
+ for(const api of ['auth.signUp','auth.verifyOtp','auth.signInWithOtp','auth.resetPasswordForEmail','auth.signInWithOAuth','auth.updateUser']) assert.ok(cloud.includes(api),api);
+ assert.ok(cloud.includes('verifyPasswordWithoutPersisting'));
+ assert.ok(authClient.includes('verifier.auth.signInWithPassword'));
+ assert.ok(authClient.includes('persistSession: false'));
  assert.ok(cloud.includes("setOtpType('signup')"));
  assert.ok(cloud.includes("setOtpType('email')"));
  assert.ok(cloud.includes("type:otpType"));
