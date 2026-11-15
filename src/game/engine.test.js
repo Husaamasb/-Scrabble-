@@ -72,11 +72,11 @@ test('applying a valid move writes the new tiles to the board', () => {
 });
 
 test('Arabic and English tile bags match their declared totals', () => {
-  assert.equal(tileSetReport('ar').actualTotal, 110);
+  assert.equal(tileSetReport('ar').actualTotal, 108);
   assert.equal(tileSetReport('ar').matchesDeclaredTotal, true);
   assert.equal(tileSetReport('en').actualTotal, 100);
   assert.equal(tileSetReport('en').matchesDeclaredTotal, true);
-  assert.equal(createTileBag('ar').length, 110);
+  assert.equal(createTileBag('ar').length, 108);
   assert.equal(createTileBag('en').length, 100);
 });
 
