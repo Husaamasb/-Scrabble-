@@ -183,6 +183,14 @@ drop policy if exists "host updates room" on public.rooms;
 
 drop policy if exists "members see room members" on public.room_members;
 create policy "members see room members" on public.room_members for select to authenticated using(public.is_scrabble_room_member(room_id));
+
+-- Heartbeats may update only the caller's timestamp, never membership or turn fields.
+revoke update on public.room_members from authenticated;
+grant update(last_seen_at) on public.room_members to authenticated;
+drop policy if exists "players update own heartbeat" on public.room_members;
+create policy "players update own heartbeat" on public.room_members for update to authenticated
+using(user_id=auth.uid() and not is_withdrawn and exists(select 1 from public.rooms r where r.id=room_id and r.status='playing'))
+with check(user_id=auth.uid() and not is_withdrawn and last_seen_at <= clock_timestamp()+interval '10 seconds' and exists(select 1 from public.rooms r where r.id=room_id and r.status='playing'));
 drop policy if exists "join own room membership" on public.room_members;
 drop policy if exists "users update own membership" on public.room_members;
 -- Membership readiness changes only through set_scrabble_ready; withdrawal only through its RPC.
@@ -605,7 +613,7 @@ after update of status on public.rooms
 for each row execute function public.initialize_scrabble_room_heartbeats();
 
 create or replace function public.heartbeat_scrabble_room(target_room uuid)
-returns void language plpgsql security definer set search_path = ''
+returns void language plpgsql security invoker set search_path = ''
 as $function$
 begin
   if auth.uid() is null then raise exception 'Sign in required'; end if;
