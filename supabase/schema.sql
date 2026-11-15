@@ -994,7 +994,7 @@ create or replace function public.pass_scrabble_turn(target_room uuid, expected_
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
-AS $
+AS $$
 declare
   target public.rooms;
   player_ids jsonb;
@@ -1084,7 +1084,7 @@ begin
   end if;
   return target;
 end;
-$function$
+$$;
 
 grant execute on function public.pass_scrabble_turn(uuid,integer) to authenticated;
 
@@ -1236,7 +1236,7 @@ begin
   end if;
   return target;
 end;
-$function$
+$exchange$;
 
 grant execute on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) to authenticated;
 revoke all on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) from public, anon;
