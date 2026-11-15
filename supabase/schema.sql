@@ -2349,3 +2349,70 @@ begin
   alter publication supabase_realtime add table public.scrabble_tournament_matches;
  end if;
 end $$;
+
+
+-- Tournament scheduling, virtual rewards, and safe read-only spectating.
+alter table public.scrabble_tournaments
+  add column if not exists scheduled_at timestamptz,
+  add column if not exists prize_xp integer not null default 0,
+  add column if not exists prize_coins integer not null default 0,
+  add column if not exists spectators_enabled boolean not null default true,
+  add column if not exists prize_awarded_at timestamptz;
+alter table public.scrabble_tournaments
+  drop constraint if exists scrabble_tournaments_prize_xp_check,
+  drop constraint if exists scrabble_tournaments_prize_coins_check;
+alter table public.scrabble_tournaments
+  add constraint scrabble_tournaments_prize_xp_check check(prize_xp between 0 and 100000),
+  add constraint scrabble_tournaments_prize_coins_check check(prize_coins between 0 and 100000);
+create or replace function public.set_scrabble_tournament_details(target_tournament uuid, starts_at timestamptz, reward_xp integer, reward_coins integer, allow_spectators boolean)
+returns void language plpgsql security definer set search_path=''
+as $function$
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ if reward_xp not between 0 and 100000 or reward_coins not between 0 and 100000 then raise exception 'Tournament rewards are out of range'; end if;
+ update public.scrabble_tournaments set scheduled_at=starts_at,prize_xp=reward_xp,prize_coins=reward_coins,spectators_enabled=coalesce(allow_spectators,true)
+ where id=target_tournament and owner_id=auth.uid() and status='registration';
+ if not found then raise exception 'Only the tournament host can edit an open tournament'; end if;
+end;
+$function$;
+revoke all on function public.set_scrabble_tournament_details(uuid,timestamptz,integer,integer,boolean) from public,anon;
+grant execute on function public.set_scrabble_tournament_details(uuid,timestamptz,integer,integer,boolean) to authenticated;
+create or replace function public.get_scrabble_tournament_spectator_state(target_match uuid)
+returns jsonb language plpgsql security definer set search_path=''
+as $function$
+declare m public.scrabble_tournament_matches; t public.scrabble_tournaments; r public.rooms;
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select * into m from public.scrabble_tournament_matches where id=target_match;
+ if not found then raise exception 'Tournament match not found'; end if;
+ select * into t from public.scrabble_tournaments where id=m.tournament_id;
+ if not found or not t.spectators_enabled then raise exception 'Spectating is disabled for this tournament'; end if;
+ if m.room_id is null then raise exception 'This match has not started yet'; end if;
+ select * into r from public.rooms where id=m.room_id;
+ if not found or r.status not in ('playing','finished') then raise exception 'This match is not available to watch'; end if;
+ return jsonb_build_object('match_id',m.id,'tournament_id',t.id,'tournament_name',t.name,'round_number',m.round_number,'match_number',m.match_number,
+ 'player1_id',m.player1_id,'player2_id',m.player2_id,'room_status',r.status,'language',t.language,
+ 'game_state',jsonb_build_object('board',coalesce(r.game_state->'board','[]'::jsonb),'player_ids',coalesce(r.game_state->'player_ids','[]'::jsonb),
+ 'scores',coalesce(r.game_state->'scores','[]'::jsonb),'turn_index',coalesce(r.game_state->'turn_index','0'::jsonb),
+ 'bag_count',coalesce(r.game_state->'bag_count','0'::jsonb),'revision',coalesce(r.game_state->'revision','0'::jsonb),'history',coalesce(r.game_state->'history','[]'::jsonb)));
+end;
+$function$;
+revoke all on function public.get_scrabble_tournament_spectator_state(uuid) from public,anon;
+grant execute on function public.get_scrabble_tournament_spectator_state(uuid) to authenticated;
+create or replace function public.award_scrabble_tournament_prize()
+returns trigger language plpgsql security definer set search_path=''
+as $function$
+begin
+ if old.status<>'completed' and new.status='completed' and new.champion_id is not null and new.prize_awarded_at is null then
+  update public.profiles set xp=xp+new.prize_xp,updated_at=now() where id=new.champion_id and new.prize_xp>0;
+  insert into public.scrabble_wallets(user_id,coins,updated_at) values(new.champion_id,new.prize_coins,now())
+  on conflict(user_id) do update set coins=public.scrabble_wallets.coins+excluded.coins,updated_at=now();
+  update public.scrabble_tournaments set prize_awarded_at=now() where id=new.id;
+ end if;
+ return new;
+end;
+$function$;
+revoke all on function public.award_scrabble_tournament_prize() from public,anon,authenticated,service_role;
+drop trigger if exists award_scrabble_tournament_prize on public.scrabble_tournaments;
+create trigger award_scrabble_tournament_prize after update of status on public.scrabble_tournaments
+for each row when(old.status<>'completed' and new.status='completed') execute function public.award_scrabble_tournament_prize();
