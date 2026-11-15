@@ -67,3 +67,9 @@ test('authoritative online move RPC and dictionary cache are included in the rep
   assert.ok(schema.includes("revoke all on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) from public,anon,authenticated"));
   assert.ok(schema.includes("grant execute on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) to service_role"));
 });
+
+test('online presence uses one shared realtime channel for all signed-in players',()=>{
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("supabase.channel('scrabble:online',{config:{presence:{key:user.id}}})"));
+  assert.ok(cloud.includes("p.user_id!==user.id"));
+});
