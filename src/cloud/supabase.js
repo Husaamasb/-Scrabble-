@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+const env = import.meta.env || {};
+const url = env.VITE_SUPABASE_URL?.trim();
+const anonKey = env.VITE_SUPABASE_ANON_KEY?.trim();
 
 export const isCloudConfigured = Boolean(url && anonKey);
 export const supabase = isCloudConfigured
