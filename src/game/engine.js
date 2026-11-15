@@ -52,7 +52,11 @@ function scoreWord(cells, placements) {
 export function evaluateMove(board, proposed) {
   if (!Array.isArray(proposed) || proposed.length === 0) return { valid:false, reason:'empty-move' };
   const placements = new Map();
+  const usedTileIds = new Set();
   for (const p of proposed) {
+    const tileId = p.tile?.id == null ? null : String(p.tile.id);
+    if (tileId && usedTileIds.has(tileId)) return { valid:false, reason:'duplicate-tile' };
+    if (tileId) usedTileIds.add(tileId);
     if (!Number.isInteger(p.row) || !Number.isInteger(p.col) || p.row<0 || p.row>=15 || p.col<0 || p.col>=15 || !p.tile) {
       return { valid:false, reason:'invalid-placement' };
     }
