@@ -1665,3 +1665,67 @@ $function$
 ;
 revoke all on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) from public,anon,authenticated;
 grant execute on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) to service_role;
+
+ 
+-- Daily challenges: match results are the only source of progress.
+create table if not exists public.scrabble_daily_challenge_progress (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  challenge_date date not null,
+  challenge_id text not null check (challenge_id in ('play_match','win_match','score_100')),
+  progress integer not null default 0 check (progress >= 0),
+  goal integer not null default 1 check (goal > 0),
+  reward_xp integer not null check (reward_xp > 0),
+  claimed_at timestamptz,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, challenge_date, challenge_id)
+);
+alter table public.scrabble_daily_challenge_progress enable row level security;
+revoke all on public.scrabble_daily_challenge_progress from public, anon, authenticated;
+grant select on public.scrabble_daily_challenge_progress to authenticated;
+drop policy if exists "players read own daily challenge progress" on public.scrabble_daily_challenge_progress;
+create policy "players read own daily challenge progress"
+on public.scrabble_daily_challenge_progress for select to authenticated
+using ((select auth.uid()) = user_id);
+
+create or replace function public.track_scrabble_daily_challenges()
+returns trigger language plpgsql security definer set search_path = ''
+as $function$
+declare day_utc date := (new.created_at at time zone 'UTC')::date;
+begin
+  insert into public.scrabble_daily_challenge_progress
+    (user_id, challenge_date, challenge_id, progress, goal, reward_xp)
+  values
+    (new.user_id, day_utc, 'play_match', 1, 1, 10),
+    (new.user_id, day_utc, 'win_match', case when new.outcome = 'win' then 1 else 0 end, 1, 20),
+    (new.user_id, day_utc, 'score_100', case when new.score >= 100 then 1 else 0 end, 1, 15)
+  on conflict (user_id, challenge_date, challenge_id) do update
+  set progress = least(public.scrabble_daily_challenge_progress.goal,
+      public.scrabble_daily_challenge_progress.progress + excluded.progress),
+      updated_at = now();
+  return new;
+end;
+$function$;
+revoke all on function public.track_scrabble_daily_challenges() from public, anon, authenticated, service_role;
+drop trigger if exists track_scrabble_daily_challenges on public.scrabble_match_results;
+create trigger track_scrabble_daily_challenges after insert on public.scrabble_match_results
+for each row execute function public.track_scrabble_daily_challenges();
+
+create or replace function public.claim_scrabble_daily_challenge(target_date date, target_challenge text)
+returns integer language plpgsql security definer set search_path = ''
+as $function$
+declare uid uuid := auth.uid(); challenge public.scrabble_daily_challenge_progress;
+begin
+  if uid is null then raise exception 'Sign in required'; end if;
+  select * into challenge from public.scrabble_daily_challenge_progress
+  where user_id=uid and challenge_date=target_date and challenge_id=target_challenge for update;
+  if not found then raise exception 'Challenge not found'; end if;
+  if challenge.progress < challenge.goal then raise exception 'Challenge is not complete'; end if;
+  if challenge.claimed_at is not null then raise exception 'Reward already claimed'; end if;
+  update public.scrabble_daily_challenge_progress set claimed_at=now(),updated_at=now()
+  where user_id=uid and challenge_date=target_date and challenge_id=target_challenge;
+  update public.profiles set xp=xp+challenge.reward_xp,updated_at=now() where id=uid;
+  return challenge.reward_xp;
+end;
+$function$;
+revoke all on function public.claim_scrabble_daily_challenge(date,text) from public, anon;
+grant execute on function public.claim_scrabble_daily_challenge(date,text) to authenticated;
