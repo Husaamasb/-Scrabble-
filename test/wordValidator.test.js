@@ -27,12 +27,18 @@ test('dictionary network failures never approve words',async()=>{
   assert.equal(result.reason,'word-not-accepted');
 });
 
-test('server dictionary has a secret-backed AI fallback for missing Wiktionary entries',()=>{
+test('server move dictionary uses AI first and Wiktionary only as fallback',()=>{
   const source=readFileSync(new URL('../supabase/functions/scrabble-move/index.ts',import.meta.url),'utf8');
   assert.ok(source.includes('OPENAI_API_KEY'));
   assert.ok(source.includes('OPENAI_DICTIONARY_MODEL'));
   assert.ok(source.includes('api.openai.com/v1/responses'));
   assert.ok(source.includes('type: "json_schema"'));
   assert.ok(source.includes('store: false'));
-  assert.ok(source.includes('if (!valid && openAiKey)'));
+  assert.ok(source.includes('if (openAiKey)'));
+  assert.ok(source.includes('if (!aiChecked)'));
+  assert.ok(source.includes('.select("is_valid,checked_at,source")'));
+  assert.ok(source.includes('cached.source === "ai"'));
+  assert.ok(source.includes('source,'));
+  assert.ok(!source.includes('if (!valid && openAiKey)'));
+  assert.ok(source.indexOf('if (openAiKey)') < source.indexOf('if (!aiChecked)'));
 });
