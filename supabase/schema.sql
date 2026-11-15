@@ -1736,7 +1736,7 @@ create table if not exists public.scrabble_notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   actor_id uuid references public.profiles(id) on delete set null,
-  kind text not null check (kind in ('friend_request','room_invite','direct_message')),
+  kind text not null check (kind in ('friend_request','room_invite','direct_message','turn_started','match_result','daily_reward')),
   reference_id uuid,
   created_at timestamptz not null default now(),
   read_at timestamptz
@@ -1802,3 +1802,55 @@ drop trigger if exists notify_scrabble_direct_message on public.direct_messages;
 create trigger notify_scrabble_direct_message after insert on public.direct_messages
 for each row execute function public.emit_scrabble_notification();
 alter publication supabase_realtime add table public.scrabble_notifications;
+
+
+alter table public.scrabble_notifications drop constraint if exists scrabble_notifications_kind_check;
+alter table public.scrabble_notifications add constraint scrabble_notifications_kind_check
+ check (kind in ('friend_request','room_invite','direct_message','turn_started','match_result','daily_reward'));
+create or replace function public.notify_scrabble_room_state()
+returns trigger language plpgsql security definer set search_path=public
+as $$
+declare turn_user uuid; member_row record;
+begin
+ if new.status='playing' and (
+   old.status is distinct from 'playing' or
+   old.game_state->>'turn_index' is distinct from new.game_state->>'turn_index'
+ ) then
+   begin
+     turn_user := (new.game_state->'player_ids'->>(coalesce((new.game_state->>'turn_index')::integer,0)))::uuid;
+   exception when others then turn_user := null;
+   end;
+   if turn_user is not null then
+     insert into public.scrabble_notifications(user_id,kind,reference_id)
+     values(turn_user,'turn_started',new.id);
+   end if;
+ end if;
+ if new.status='finished' and old.status is distinct from 'finished' then
+   for member_row in select user_id from public.room_members where room_id=new.id loop
+     insert into public.scrabble_notifications(user_id,kind,reference_id)
+     values(member_row.user_id,'match_result',new.id);
+   end loop;
+ end if;
+ return new;
+end;
+$$;
+revoke all on function public.notify_scrabble_room_state() from public,anon,authenticated;
+drop trigger if exists notify_scrabble_turn_and_result on public.rooms;
+create trigger notify_scrabble_turn_and_result after update of status,game_state on public.rooms
+for each row execute function public.notify_scrabble_room_state();
+
+create or replace function public.notify_scrabble_daily_reward()
+returns trigger language plpgsql security definer set search_path=public
+as $$
+begin
+ if old.claimed_at is null and new.claimed_at is not null then
+   insert into public.scrabble_notifications(user_id,kind,reference_id)
+   values(new.user_id,'daily_reward',new.user_id);
+ end if;
+ return new;
+end;
+$$;
+revoke all on function public.notify_scrabble_daily_reward() from public,anon,authenticated;
+drop trigger if exists notify_scrabble_daily_reward on public.scrabble_daily_challenge_progress;
+create trigger notify_scrabble_daily_reward after update of claimed_at on public.scrabble_daily_challenge_progress
+for each row execute function public.notify_scrabble_daily_reward();
