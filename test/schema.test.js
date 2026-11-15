@@ -175,3 +175,28 @@ test('the original user-provided logo is used in the app header and retained as 
   const logo=readFileSync(new URL('../public/logo-original.webp',import.meta.url));
   assert.equal(logo.subarray(0,4).toString(),'RIFF');
 });
+
+test('room host can remove another player through a protected server RPC',()=>{
+  assert.ok(schema.includes('create or replace function public.host_kick_scrabble_room_player(target_room uuid,target_player uuid)'));
+  assert.ok(schema.includes('if r.host_id<>auth.uid() then raise exception'));
+  assert.ok(schema.includes("if target_player=auth.uid() then raise exception 'Host cannot kick themselves'"));
+  assert.ok(schema.includes("private.apply_scrabble_room_removal(target_room,target_player,'host_kick')"));
+  assert.ok(schema.includes('grant execute on function public.host_kick_scrabble_room_player(uuid,uuid) to authenticated'));
+});
+test('room removal votes require active players, one ballot each, and a strict majority',()=>{
+  assert.ok(schema.includes('create table if not exists public.scrabble_room_removal_votes'));
+  assert.ok(schema.includes('create table if not exists public.scrabble_room_removal_ballots'));
+  assert.ok(schema.includes('create unique index if not exists one_open_scrabble_removal_vote_per_room'));
+  assert.ok(schema.includes('At least three active players are required to start a vote'));
+  assert.ok(schema.includes('You have already voted'));
+  assert.ok(schema.includes('yes_count>eligible_count/2'));
+  assert.ok(schema.includes('no_count>eligible_count/2'));
+  assert.ok(schema.includes('grant execute on function public.start_scrabble_room_removal_vote(uuid,uuid) to authenticated'));
+  assert.ok(schema.includes('grant execute on function public.cast_scrabble_room_removal_vote(uuid,boolean) to authenticated'));
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("supabase.rpc('host_kick_scrabble_room_player'"));
+  assert.ok(cloud.includes("supabase.rpc('start_scrabble_room_removal_vote'"));
+  assert.ok(cloud.includes("supabase.rpc('cast_scrabble_room_removal_vote'"));
+  assert.ok(cloud.includes("table:'scrabble_room_removal_ballots'"));
+  assert.ok(cloud.includes('voteYes'));
+});
