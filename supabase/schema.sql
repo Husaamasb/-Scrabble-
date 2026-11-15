@@ -1906,3 +1906,73 @@ end;
 $$;
 revoke all on function public.purchase_scrabble_store_item(text) from public,anon;
 grant execute on function public.purchase_scrabble_store_item(text) to authenticated;
+
+
+create table if not exists public.scrabble_gifts(
+ id uuid primary key default gen_random_uuid(),
+ sender_id uuid not null references public.profiles(id) on delete cascade,
+ recipient_id uuid not null references public.profiles(id) on delete cascade,
+ item_key text not null references public.scrabble_store_catalog(item_key),
+ status text not null default 'pending' check(status in ('pending','accepted','rejected')),
+ created_at timestamptz not null default now(),
+ resolved_at timestamptz,
+ check(sender_id<>recipient_id)
+);
+alter table public.scrabble_gifts enable row level security;
+revoke all on public.scrabble_gifts from anon,authenticated;
+grant select on public.scrabble_gifts to authenticated;
+drop policy if exists "players read their own gifts" on public.scrabble_gifts;
+create policy "players read their own gifts" on public.scrabble_gifts for select to authenticated
+using((select auth.uid())=sender_id or (select auth.uid())=recipient_id);
+create or replace function public.send_scrabble_gift(recipient uuid,target_item text)
+returns uuid language plpgsql security definer set search_path=public
+as $$
+declare uid uuid:=auth.uid(); gift_id uuid;
+begin
+ if uid is null then raise exception 'Sign in required'; end if;
+ if recipient is null or recipient=uid then raise exception 'Choose another player'; end if;
+ if not exists(select 1 from public.friendships where user_low=least(uid,recipient) and user_high=greatest(uid,recipient)) then raise exception 'Gifts can only be sent to friends'; end if;
+ perform 1 from public.scrabble_inventory where user_id=uid and item_key=target_item for update;
+ if not found then raise exception 'You do not own this item'; end if;
+ delete from public.scrabble_inventory where user_id=uid and item_key=target_item;
+ insert into public.scrabble_gifts(sender_id,recipient_id,item_key) values(uid,recipient,target_item) returning id into gift_id;
+ return gift_id;
+end;
+$$;
+revoke all on function public.send_scrabble_gift(uuid,text) from public,anon;
+grant execute on function public.send_scrabble_gift(uuid,text) to authenticated;
+create or replace function public.resolve_scrabble_gift(target_gift uuid,accept_gift boolean)
+returns void language plpgsql security definer set search_path=public
+as $$
+declare uid uuid:=auth.uid(); gift public.scrabble_gifts;
+begin
+ if uid is null then raise exception 'Sign in required'; end if;
+ select * into gift from public.scrabble_gifts where id=target_gift and recipient_id=uid and status='pending' for update;
+ if not found then raise exception 'Gift not available'; end if;
+ if accept_gift then
+   insert into public.scrabble_inventory(user_id,item_key) values(uid,gift.item_key);
+   update public.scrabble_gifts set status='accepted',resolved_at=now() where id=target_gift;
+ else
+   insert into public.scrabble_inventory(user_id,item_key) values(gift.sender_id,gift.item_key);
+   update public.scrabble_gifts set status='rejected',resolved_at=now() where id=target_gift;
+ end if;
+end;
+$$;
+revoke all on function public.resolve_scrabble_gift(uuid,boolean) from public,anon;
+grant execute on function public.resolve_scrabble_gift(uuid,boolean) to authenticated;
+alter table public.scrabble_notifications drop constraint if exists scrabble_notifications_kind_check;
+alter table public.scrabble_notifications add constraint scrabble_notifications_kind_check
+check(kind in ('friend_request','room_invite','direct_message','turn_started','match_result','daily_reward','gift_received'));
+create or replace function public.notify_scrabble_gift_received()
+returns trigger language plpgsql security definer set search_path=public
+as $$
+begin
+ insert into public.scrabble_notifications(user_id,actor_id,kind,reference_id)
+ values(new.recipient_id,new.sender_id,'gift_received',new.id);
+ return new;
+end;
+$$;
+revoke all on function public.notify_scrabble_gift_received() from public,anon,authenticated;
+drop trigger if exists notify_scrabble_gift_received on public.scrabble_gifts;
+create trigger notify_scrabble_gift_received after insert on public.scrabble_gifts
+for each row execute function public.notify_scrabble_gift_received();
