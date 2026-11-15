@@ -144,7 +144,7 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
     .maybeSingle();
   if (cached) {
     const age = Date.now() - new Date(cached.checked_at).getTime();
-    const ttl = cached.is_valid ? 30 * 24 * 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000;
+    const ttl = cached.is_valid ? 30 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
     if (Number.isFinite(age) && age >= 0 && age < ttl) return Boolean(cached.is_valid);
   }
 
@@ -230,6 +230,7 @@ async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") 
     is_valid: valid,
     checked_at: new Date().toISOString(),
     }, { onConflict: "language,word" });
+  }
   return valid;
 }
 
