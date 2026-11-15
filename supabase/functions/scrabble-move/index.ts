@@ -134,6 +134,8 @@ function evaluate(boardInput: any[], rack: any[], placements: any[]) {
 
 async function dictionaryEntry(admin: any, word: string, language: "ar" | "en") {
   const normalized = word.trim();
+  const { data: override } = await admin.from("scrabble_dictionary_overrides").select("is_valid").eq("language", language).eq("word", normalized).maybeSingle();
+  if (override) return Boolean(override.is_valid);
   const { data: cached } = await admin
     .from("scrabble_dictionary_cache")
     .select("is_valid,checked_at")
