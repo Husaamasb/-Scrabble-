@@ -14,4 +14,8 @@ test('admin player UI uses server-side moderation actions',()=>{
  assert.ok(panel.includes("supabase.functions.invoke('scrabble-admin'"));
  assert.ok(panel.includes("action:'ban_user'"));
  assert.ok(panel.includes("action:'unban_user'"));
+ assert.ok(panel.includes("'168h'"));
+ assert.ok(panel.includes("'720h'"));
+ assert.ok(panel.includes('banned_until'));
+ assert.ok(panel.includes('is_admin'));
 });
