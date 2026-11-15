@@ -166,3 +166,12 @@ test('account settings persist privately for signed-in players',()=>{
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
   assert.ok(dashboard.includes("section==='settings'&&cloudSignedIn"));
 });
+
+test('the original user-provided logo is used in the app header and retained as the app icon asset',()=>{
+  const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
+  assert.ok(app.includes("src={import.meta.env.BASE_URL+'logo-original.webp'}"));
+  const fs=readFileSync(new URL('../public/icon.svg',import.meta.url),'utf8');
+  assert.ok(fs.includes('data:image/webp;base64,'));
+  const logo=readFileSync(new URL('../public/logo-original.webp',import.meta.url));
+  assert.equal(logo.subarray(0,4).toString(),'RIFF');
+});
