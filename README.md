@@ -33,6 +33,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
 - Supabase integration: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
+- Friend QR sharing and image-based QR scanning (on browsers with BarcodeDetector), with manual player-ID search as a fallback.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated word placement, dictionary checks, scoring, rack refill, pass, exchange, and endgame settlement.
 - Capacitor Android/iOS support plus an automated macOS GitHub Actions build for the iOS Simulator.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
