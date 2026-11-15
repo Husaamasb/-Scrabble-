@@ -73,3 +73,16 @@ test('online presence uses one shared realtime channel for all signed-in players
   assert.ok(cloud.includes("supabase.channel('scrabble:online',{config:{presence:{key:user.id}}})"));
   assert.ok(cloud.includes("p.user_id!==user.id"));
 });
+
+
+test('daily challenges are driven by server match results and claim XP through an authenticated RPC',()=>{
+  assert.ok(schema.includes('create table if not exists public.scrabble_daily_challenge_progress'));
+  assert.ok(schema.includes('create trigger track_scrabble_daily_challenges'));
+  assert.ok(schema.includes("case when new.outcome = 'win' then 1 else 0 end"));
+  assert.ok(schema.includes("case when new.score >= 100 then 1 else 0 end"));
+  assert.ok(schema.includes('grant execute on function public.claim_scrabble_daily_challenge(date,text) to authenticated'));
+  assert.ok(schema.includes('revoke all on function public.claim_scrabble_daily_challenge(date,text) from public, anon'));
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("section!=='tasks'"));
+  assert.ok(cloud.includes("supabase.rpc('claim_scrabble_daily_challenge'"));
+});
