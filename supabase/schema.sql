@@ -2006,6 +2006,8 @@ declare
   participant record;
   final_outcome text;
   delta integer;
+  actual_delta integer;
+  current_xp integer;
   inserted_id uuid;
 begin
   if old.status <> 'playing' or new.status <> 'finished' then return new; end if;
@@ -2029,22 +2031,26 @@ begin
     end if;
     delta := case final_outcome when 'win' then 20 when 'draw' then 15 else -5 end;
 
+    select xp into current_xp
+    from public.profiles where id=participant.user_id for update;
+    if not found then raise exception 'Profile missing for match participant'; end if;
+    actual_delta := greatest(0,current_xp+delta)-current_xp;
+
     insert into public.scrabble_match_results
       (room_id,user_id,language,score,outcome,xp_change)
     values (new.id,participant.user_id,case when new.language='ar' then 'ar' else 'en' end,
-      participant.score,final_outcome,delta)
+      participant.score,final_outcome,actual_delta)
     on conflict (room_id,user_id) do nothing
     returning id into inserted_id;
 
     if inserted_id is not null then
       update public.profiles
-      set xp=greatest(0,xp+delta),
+      set xp=current_xp+actual_delta,
           wins=wins+case when final_outcome='win' then 1 else 0 end,
           draws=draws+case when final_outcome='draw' then 1 else 0 end,
           losses=losses+case when final_outcome='loss' then 1 else 0 end,
           updated_at=now()
       where id=participant.user_id;
-      if not found then raise exception 'Profile missing for match participant'; end if;
     end if;
     inserted_id := null;
   end loop;
