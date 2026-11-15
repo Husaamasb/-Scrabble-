@@ -1854,3 +1854,55 @@ revoke all on function public.notify_scrabble_daily_reward() from public,anon,au
 drop trigger if exists notify_scrabble_daily_reward on public.scrabble_daily_challenge_progress;
 create trigger notify_scrabble_daily_reward after update of claimed_at on public.scrabble_daily_challenge_progress
 for each row execute function public.notify_scrabble_daily_reward();
+
+
+create table if not exists public.scrabble_store_catalog (
+ item_key text primary key,
+ category text not null check(category in ('frame','tiles','board','title')),
+ name_ar text not null,
+ name_en text not null,
+ price integer not null check(price>0),
+ active boolean not null default true
+);
+insert into public.scrabble_store_catalog(item_key,category,name_ar,name_en,price) values
+ ('frame_gold','frame','إطار ذهبي','Golden frame',30),
+ ('frame_royal','frame','إطار ملكي','Royal frame',60),
+ ('tiles_wood','tiles','قطع خشبية','Wooden tiles',40),
+ ('tiles_crystal','tiles','قطع كريستالية','Crystal tiles',80),
+ ('board_classic','board','لوحة كلاسيكية','Classic board',50),
+ ('board_night','board','لوحة ليلية','Night board',75),
+ ('title_wordmaster','title','لقب خبير الكلمات','Word master title',25),
+ ('title_champion','title','لقب البطل','Champion title',50)
+on conflict(item_key) do nothing;
+create table if not exists public.scrabble_wallets(user_id uuid primary key references public.profiles(id) on delete cascade,coins integer not null default 100 check(coins>=0),updated_at timestamptz not null default now());
+create table if not exists public.scrabble_inventory(user_id uuid not null references public.profiles(id) on delete cascade,item_key text not null references public.scrabble_store_catalog(item_key),purchased_at timestamptz not null default now(),primary key(user_id,item_key));
+alter table public.scrabble_store_catalog enable row level security;
+alter table public.scrabble_wallets enable row level security;
+alter table public.scrabble_inventory enable row level security;
+revoke all on public.scrabble_store_catalog,public.scrabble_wallets,public.scrabble_inventory from anon,authenticated;
+grant select on public.scrabble_store_catalog,public.scrabble_wallets,public.scrabble_inventory to authenticated;
+drop policy if exists "active scrabble store catalog visible" on public.scrabble_store_catalog;
+create policy "active scrabble store catalog visible" on public.scrabble_store_catalog for select to authenticated using(active);
+drop policy if exists "players read own scrabble wallet" on public.scrabble_wallets;
+create policy "players read own scrabble wallet" on public.scrabble_wallets for select to authenticated using((select auth.uid())=user_id);
+drop policy if exists "players read own scrabble inventory" on public.scrabble_inventory;
+create policy "players read own scrabble inventory" on public.scrabble_inventory for select to authenticated using((select auth.uid())=user_id);
+create or replace function public.purchase_scrabble_store_item(target_item text)
+returns integer language plpgsql security definer set search_path=public
+as $$
+declare uid uuid:=auth.uid(); item public.scrabble_store_catalog; balance integer;
+begin
+ if uid is null then raise exception 'Sign in required'; end if;
+ select * into item from public.scrabble_store_catalog where item_key=target_item and active=true;
+ if not found then raise exception 'Store item unavailable'; end if;
+ insert into public.scrabble_wallets(user_id,coins) values(uid,100) on conflict(user_id) do nothing;
+ select coins into balance from public.scrabble_wallets where user_id=uid for update;
+ if exists(select 1 from public.scrabble_inventory where user_id=uid and item_key=target_item) then raise exception 'Item already owned'; end if;
+ if balance<item.price then raise exception 'Not enough coins'; end if;
+ update public.scrabble_wallets set coins=coins-item.price,updated_at=now() where user_id=uid returning coins into balance;
+ insert into public.scrabble_inventory(user_id,item_key) values(uid,target_item);
+ return balance;
+end;
+$$;
+revoke all on function public.purchase_scrabble_store_item(text) from public,anon;
+grant execute on function public.purchase_scrabble_store_item(text) to authenticated;
