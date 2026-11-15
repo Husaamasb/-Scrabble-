@@ -44,11 +44,12 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 ## Still required for a complete release
 
 - A separate six-digit OTP challenge on every password sign-in is not implemented; the current email code verifies new account creation. SMTP delivery, Google/Apple OAuth, and password recovery still need real-account testing.
-- Finish profile avatar selection and achievement/badge display.
+- Profile avatar selection and achievement badges are implemented; badges are currently calculated from profile totals rather than stored as permanent award records.
 - Complete end-to-end tests with at least two real players, including room reconnects, pass/exchange, match settlement, and automatic tournament advancement.
 - Verify a real authenticated AI dictionary request in the Supabase Edge Function logs; code and deployments are ready, but a live provider verdict has not yet been observed in the recent logs.
-- The owner account must be granted `scrabble_admin` in server-managed App Metadata before the admin dashboard is accessible.
+- The owner account must be granted `scrabble_admin` in server-managed App Metadata before the admin dashboard is accessible. No account currently exists in this Supabase project, so this step waits for the owner to register.
 - Final device-specific icon packaging and visual QA on real devices. **The approved artwork in `public/icon.svg` must remain unchanged.**
+- Live end-to-end verification requires real accounts; no real-user room, reconnect, or tournament test is claimed yet.
 - Signed Android/iOS store releases require real-device testing and platform signing. The Android artifact is a debug APK; the iOS Simulator artifact is unsigned and is not an installable iPhone IPA.
 
 Guest/offline dictionary checks use Wiktionary's public MediaWiki API and require an internet connection for words not already cached. Authenticated cloud play uses the AI-first server validator, with Wiktionary only as a fallback if the AI provider is unavailable. The validator judges exact words and does not generate or suggest words.
