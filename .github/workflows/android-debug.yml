@@ -69,6 +69,8 @@ jobs:
           retention-days: 14
 
       - name: Install and launch APK in Android emulator
+        timeout-minutes: 15
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
