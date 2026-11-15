@@ -105,3 +105,11 @@ The online section includes global, weekly, monthly, Arabic-game, and English-ga
 
 - Signed-in players can save app language, light/dark appearance, sound, and notification preferences to their private account settings.
 - The original user-provided Scrabble Arabic logo is restored in the app header and retained as the app icon artwork. It is used as supplied, not redrawn.
+
+
+## Room moderation
+
+- In public and friends-only rooms, the host can remove another player. The host cannot remove themselves through this control.
+- With at least three active players, any active non-host player can propose removing another non-host player. The proposer casts the first yes vote automatically; the target cannot vote.
+- Each eligible player gets one ballot. Removal requires a strict majority of eligible players; otherwise the proposal closes without removing anyone.
+- Removal is processed by server-side functions, skips a removed player's turn when necessary, and is recorded in the room match log. A removed player is returned to the room list.
