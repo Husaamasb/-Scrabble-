@@ -130,3 +130,11 @@
 .cloud-move-controls small{line-height:1.6}
 .cloud-rack-tile:disabled{opacity:.4;cursor:not-allowed}
 .cloud-private-rack input{max-width:180px;margin-top:6px}
+
+
+.cloud-match-scores>div.active-turn{outline:2px solid #6f45a8;outline-offset:-2px}
+.cloud-word-log{display:grid;gap:6px;margin:10px 0;padding:10px;border:1px solid #b99870;border-radius:9px;background:#f7ecd7;color:#493321}
+.cloud-word-log>b{margin-bottom:2px}
+.cloud-word-log>div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #b99a7355}
+.cloud-word-log strong{white-space:nowrap}
+.dark .cloud-word-log{background:#30251d;color:#f2dfbd;border-color:#72553a}
