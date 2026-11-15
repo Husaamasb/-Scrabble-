@@ -59,3 +59,11 @@ test('iOS simulator workflow builds the Capacitor app on macOS without claiming 
   const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8');
   assert.match(readme,/unsigned simulator app/);
 });
+
+test('authoritative online move RPC and dictionary cache are included in the reproducible schema',()=>{
+  assert.ok(schema.includes('create table if not exists public.scrabble_dictionary_cache'));
+  assert.ok(schema.includes('alter table public.scrabble_dictionary_cache enable row level security'));
+  assert.ok(schema.includes('create or replace function public.place_scrabble_word'));
+  assert.ok(schema.includes("revoke all on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) from public,anon,authenticated"));
+  assert.ok(schema.includes("grant execute on function public.place_scrabble_word(uuid,integer,jsonb,jsonb,uuid) to service_role"));
+});
