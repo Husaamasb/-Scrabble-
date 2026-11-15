@@ -29,6 +29,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - AI-first Arabic/English dictionary for authenticated cloud play: server-side admin overrides, trusted AI verdict cache, then OpenAI Responses API word review. Wiktionary is a fallback only if the AI provider is unavailable; guest/offline play uses exact Wiktionary checks. Provider failures never auto-approve words.
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
+- Optional synthesized accepted-word sound effect, controlled by the saved account sound preference; no external audio asset is required.
 - Playable same-device multiplayer mode for 2–4 players, with starting-player draw, private turn handoff, scoring, pass/exchange flow, match history, winner display, and automatic local match recovery.
 - Fixed 15×15 premium-square layout shared by Arabic and English boards; premium positions cannot be edited by the host or players.
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
