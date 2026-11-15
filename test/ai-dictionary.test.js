@@ -27,3 +27,20 @@ test('dictionary rejects mixed scripts and malformed words',()=>{
  assert.ok(edge.includes('English words must contain English letters only'));
  assert.ok(edge.includes('normalized.length > 80'));
 });
+
+
+const botClient=readFileSync(new URL('../src/cloud/bot.js',import.meta.url),'utf8');
+const botEdge=readFileSync(new URL('../supabase/functions/scrabble-bot/index.ts',import.meta.url),'utf8');
+const botEngine=readFileSync(new URL('../src/game/bot.js',import.meta.url),'utf8');
+test('computer turns request AI word candidates and retain a verified fallback vocabulary',()=>{
+ assert.ok(local.includes('requestBotWords(session)'));
+ assert.ok(local.includes('findBotMoves(session,aiWords)'));
+ assert.ok(local.includes('const fallbackMoves=findBotMoves(session)'));
+ assert.ok(botClient.includes("functions.invoke('scrabble-bot'"));
+ assert.ok(botClient.includes('session.board.map'));
+ assert.ok(botEdge.includes("createSupabaseContext(req, { auth: 'user' })"));
+ assert.ok(botEdge.includes('OPENAI_API_KEY'));
+ assert.ok(botEdge.includes('json_schema'));
+ assert.ok(botEdge.includes('maxItems: 80'));
+ assert.ok(botEngine.includes('export function findBotMoves'));
+});
