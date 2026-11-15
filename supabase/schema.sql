@@ -2507,3 +2507,28 @@ end;
 $function$;
 revoke all on function public.admin_close_scrabble_waiting_room(uuid) from public,anon;
 grant execute on function public.admin_close_scrabble_waiting_room(uuid) to authenticated;
+
+
+-- Prevent the host from starting a scheduled tournament before its announced time.
+create or replace function public.start_scrabble_tournament(target_tournament uuid)
+returns void language plpgsql security definer set search_path=''
+as $function$
+declare target public.scrabble_tournaments; entrants uuid[]; n integer; i integer; round_size integer:=1; p1 uuid; p2 uuid;
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select * into target from public.scrabble_tournaments where id=target_tournament for update;
+ if not found or target.owner_id<>auth.uid() then raise exception 'Only the tournament host can start it'; end if;
+ if target.status<>'registration' then raise exception 'Tournament already started'; end if;
+ if target.scheduled_at is not null and target.scheduled_at>now() then raise exception 'Tournament is scheduled for a later time'; end if;
+ select array_agg(user_id order by joined_at,user_id),count(*) into entrants,n from public.scrabble_tournament_players where tournament_id=target_tournament;
+ if n<2 then raise exception 'At least two players are required'; end if;
+ while round_size<n loop round_size:=round_size*2; end loop;
+ for i in 1..(round_size/2) loop
+  p1:=entrants[(i*2)-1]; p2:=entrants[i*2];
+  if p1 is null and p2 is null then continue; end if;
+  insert into public.scrabble_tournament_matches(tournament_id,round_number,match_number,player1_id,player2_id,winner_id,status)
+  values(target_tournament,1,i,p1,p2,case when p1 is null or p2 is null then coalesce(p1,p2) else null end,case when p1 is null or p2 is null then 'completed' else 'scheduled' end);
+ end loop;
+ update public.scrabble_tournaments set status='ongoing',started_at=now() where id=target_tournament;
+end;
+$function$;
