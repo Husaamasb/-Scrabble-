@@ -7,6 +7,7 @@ import LocalTable from './LocalTable.jsx';
 import Dashboard from './Dashboard.jsx';
 import CloudDashboard from './CloudDashboard.jsx';
 import { isCloudConfigured, supabase } from './cloud/supabase.js';
+import { syncLocalSessionsToCloud } from './cloud/localGameSync.js';
 
 const COPY = {
   ar:{tag:'لعبة الكلمات الكلاسيكية',start:'يلا نلعب',arabic:'العربية',english:'English',turn:'دور',score:'نقاطك',rack:'قطعك',bag:'القطع الباقية',confirm:'اعتماد الكلمة',exchange:'بدّل القطع',pass:'عدّي الدور',clear:'إلغاء التحديد',hint:'اختار قطعة من رفك، وبعدها اضغط على مربع باللوحة.',notice:'فحص الكلمات مربوط بقاموس عربي وإنجليزي. الحسابات والعب أونلاين لسه تحت التطوير.'},
@@ -21,6 +22,7 @@ export default function App(){
   const [authLoading,setAuthLoading]=useState(true);
   const [authRecovery,setAuthRecovery]=useState(false);
   const [guestMode,setGuestMode]=useState(false);
+  const [cloudSaveSyncReady,setCloudSaveSyncReady]=useState(false);
   useEffect(()=>{
     if(!isCloudConfigured){setAuthLoading(false);return;}
     let live=true;
@@ -36,6 +38,17 @@ export default function App(){
     });
     return()=>{live=false;subscription.unsubscribe();};
   },[]);
+  useEffect(()=>{
+    const userId=authSession?.user?.id;
+    if(!userId||!isCloudConfigured){setCloudSaveSyncReady(true);return;}
+    let live=true;
+    setCloudSaveSyncReady(false);
+    const sync=async()=>{try{await syncLocalSessionsToCloud(userId);}catch{}finally{if(live)setCloudSaveSyncReady(true);}};
+    const syncWhenOnline=()=>{syncLocalSessionsToCloud(userId).catch(()=>{});};
+    sync();
+    globalThis.addEventListener?.('online',syncWhenOnline);
+    return()=>{live=false;globalThis.removeEventListener?.('online',syncWhenOnline);};
+  },[authSession?.user?.id]);
   const [localMode,setLocalMode]=useState(false);
   const [botMode,setBotMode]=useState(false);
   const [lang,setLang]=useState(()=>savedAtStart?.lang||'ar'); const t=COPY[lang];
@@ -60,7 +73,7 @@ export default function App(){
   useEffect(()=>{const sync=()=>{try{setWallet(JSON.parse(globalThis.localStorage?.getItem('scrabble:dashboard:v1')||'{}').coins??100);}catch{}};globalThis.addEventListener?.('scrabble-wallet-change',sync);return()=>globalThis.removeEventListener?.('scrabble-wallet-change',sync);},[]);
   const navItems=[{id:'home',icon:'⌂',ar:'الرئيسية',en:'Home'},{id:'profile',icon:'▤',ar:'ملفي',en:'Profile'},{id:'friends',icon:'♧',ar:'أصدقائي',en:'Friends'},{id:'tournaments',icon:'🏆',ar:'البطولات',en:'Tournaments'},{id:'account',icon:'●',ar:'الحساب',en:'Account'},{id:'rooms',icon:'▦',ar:'الغرف',en:'Rooms'},{id:'online',icon:'◎',ar:'المتصلين أونلاين',en:'Online players'},{id:'notifications',icon:'🔔',ar:'التنبيهات',en:'Notifications'}];
   if(authLoading)return <main className="app" dir={lang==='ar'?'rtl':'ltr'}><section className="dashboard-panel cloud-panel"><p>{lang==='ar'?'نتحقق من تسجيل دخولك…':'Checking your sign-in…'}</p></section></main>;
-  if(localMode)return <LocalTable language={lang} botMode={botMode} onExit={()=>{setLocalMode(false);setBotMode(false);}}/>;
+  if(localMode)return cloudSaveSyncReady?<LocalTable language={lang} botMode={botMode} userId={authSession?.user?.id} onExit={()=>{setLocalMode(false);setBotMode(false);}}/>:<main className="app" dir={lang==='ar'?'rtl':'ltr'}><section className="dashboard-panel cloud-panel"><p>{lang==='ar'?'نزامن جولتك المحفوظة…':'Syncing your saved game…'}</p></section></main>;
   if((!authSession?.user&&!guestMode)||authRecovery)return <main className="app" dir={lang==='ar'?'rtl':'ltr'}><CloudDashboard section="account" language={lang} dark={dark} onDark={setDark} onLanguage={changeLang} onNavigate={()=>{}} onGuestPlay={()=>setGuestMode(true)} authRecovery={authRecovery}/></main>;
   return <main className={dark?'app dark':'app'} dir={lang==='ar'?'rtl':'ltr'}>
     <header className="topbar"><div className="topbar-quick"><button className="quick-settings" onClick={()=>setSection('settings')} aria-label="settings">⚙️</button><div className="quick-center"><button className="quick-tasks" onClick={()=>setSection('tasks')} aria-label="tasks"><span>🎯</span><b>{lang==='ar'?'المهام':'Tasks'}</b></button><button className="wallet-pill" onClick={()=>setSection('store')} aria-label={(lang==='ar'?'رصيدك: ':'Your balance: ')+wallet}><span className="scrabble-coin">سكرابل</span><b>{wallet}</b></button></div></div><div className="brand"><img className="brand-logo" src={import.meta.env.BASE_URL+'logo-original.webp'} alt="شعار سكرابل العربية الأصلي"/><div><h1>{lang==='ar'?'سكرابل العربية':'Scrabble'}</h1><p>{t.tag}</p></div></div><div className="toolbar"><button className={lang==='ar'?'active':''} onClick={()=>changeLang('ar')}>العربية</button><button className={lang==='en'?'active':''} onClick={()=>changeLang('en')}>English</button><button className="theme" onClick={()=>setDark(v=>!v)} aria-label="theme">◐</button></div></header>
