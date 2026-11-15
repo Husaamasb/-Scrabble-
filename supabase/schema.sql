@@ -1977,3 +1977,22 @@ revoke all on function public.notify_scrabble_gift_received() from public,anon,a
 drop trigger if exists notify_scrabble_gift_received on public.scrabble_gifts;
 create trigger notify_scrabble_gift_received after insert on public.scrabble_gifts
 for each row execute function public.notify_scrabble_gift_received();
+
+
+create table if not exists public.scrabble_user_settings(
+ user_id uuid primary key references public.profiles(id) on delete cascade,
+ language text not null default 'ar' check(language in ('ar','en')),
+ dark_mode boolean not null default false,
+ sound_enabled boolean not null default true,
+ notification_preferences jsonb not null default '{"requests":true,"invites":true,"turns":true,"results":true,"daily":true,"tournaments":true,"messages":true,"rewards":true,"online":true}'::jsonb,
+ updated_at timestamptz not null default now()
+);
+alter table public.scrabble_user_settings enable row level security;
+revoke all on public.scrabble_user_settings from anon,authenticated;
+grant select,insert,update on public.scrabble_user_settings to authenticated;
+drop policy if exists "players read own scrabble settings" on public.scrabble_user_settings;
+create policy "players read own scrabble settings" on public.scrabble_user_settings for select to authenticated using((select auth.uid())=user_id);
+drop policy if exists "players create own scrabble settings" on public.scrabble_user_settings;
+create policy "players create own scrabble settings" on public.scrabble_user_settings for insert to authenticated with check((select auth.uid())=user_id);
+drop policy if exists "players update own scrabble settings" on public.scrabble_user_settings;
+create policy "players update own scrabble settings" on public.scrabble_user_settings for update to authenticated using((select auth.uid())=user_id) with check((select auth.uid())=user_id);
