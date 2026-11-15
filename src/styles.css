@@ -148,3 +148,8 @@
 .cloud-history-row:last-child{border-bottom:0}
 .cloud-history-row b{white-space:nowrap}
 @media(max-width:520px){.cloud-profile-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.cloud-leaderboard{margin-top:18px;padding:12px;border:1px solid var(--line,#8b7b68);border-radius:10px}
+.cloud-leader-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line,#8b7b68)}
+.cloud-leader-row:last-child{border-bottom:0}
+.cloud-leader-row strong{white-space:nowrap;font-variant-numeric:tabular-nums}
