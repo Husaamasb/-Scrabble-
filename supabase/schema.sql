@@ -944,3 +944,36 @@ $$;
 
 revoke all on function public.pass_scrabble_turn(uuid,integer) from public, anon;
 grant execute on function public.pass_scrabble_turn(uuid,integer) to authenticated;
+
+
+-- Security hardening and lookup indexes.
+-- room_tile_bag intentionally has RLS enabled with no client policies:
+-- only SECURITY DEFINER room RPCs may access the server-owned tile bag.
+revoke all on function public.accept_friend_request(uuid) from public, anon;
+grant execute on function public.accept_friend_request(uuid) to authenticated;
+revoke all on function public.create_profile_for_new_user() from public, anon, authenticated;
+revoke all on function public.create_scrabble_room(text, boolean, integer, text) from public, anon;
+grant execute on function public.create_scrabble_room(text, boolean, integer, text) to authenticated;
+revoke all on function public.finish_scrabble_room(uuid) from public, anon;
+grant execute on function public.finish_scrabble_room(uuid) to authenticated;
+revoke all on function public.is_scrabble_room_member(uuid) from public, anon;
+grant execute on function public.is_scrabble_room_member(uuid) to authenticated;
+revoke all on function public.join_room_by_code(text) from public, anon;
+grant execute on function public.join_room_by_code(text) to authenticated;
+revoke all on function public.set_scrabble_ready(uuid, boolean) from public, anon;
+grant execute on function public.set_scrabble_ready(uuid, boolean) to authenticated;
+revoke all on function public.start_scrabble_room(uuid) from public, anon;
+grant execute on function public.start_scrabble_room(uuid) to authenticated;
+
+create index if not exists direct_messages_recipient_id_idx on public.direct_messages(recipient_id);
+create index if not exists direct_messages_sender_id_idx on public.direct_messages(sender_id);
+create index if not exists friend_requests_receiver_id_idx on public.friend_requests(receiver_id);
+create index if not exists friendships_user_high_id_idx on public.friendships(user_high);
+create index if not exists room_invites_receiver_id_idx on public.room_invites(receiver_id);
+create index if not exists room_invites_room_id_idx on public.room_invites(room_id);
+create index if not exists room_invites_sender_id_idx on public.room_invites(sender_id);
+create index if not exists room_members_user_id_idx on public.room_members(user_id);
+create index if not exists room_messages_room_id_idx on public.room_messages(room_id);
+create index if not exists room_messages_sender_id_idx on public.room_messages(sender_id);
+create index if not exists room_player_private_user_id_idx on public.room_player_private(user_id);
+create index if not exists rooms_host_id_idx on public.rooms(host_id);
