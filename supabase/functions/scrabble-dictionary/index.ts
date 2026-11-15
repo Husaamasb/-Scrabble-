@@ -34,7 +34,7 @@ async function aiDictionaryVerdict(word: string, language: "ar" | "en", apiKey: 
       max_output_tokens: 80,
       instructions: "You are a conservative bilingual Scrabble lexicon adjudicator. Decide whether the exact supplied string is a recognized standalone lexical word in the specified language. Accept established dictionary headwords and ordinary inflected forms. Reject proper names, abbreviations, phrases, typos, invented strings, and uncertain cases. Do not translate, transliterate, repair, or add diacritics. For Arabic, accept standard Arabic lexical forms only; do not accept isolated particles unless they are established dictionary entries. If unsure, valid must be false. Return only the requested JSON object.",
       input: JSON.stringify({
-        language: language === "ar" ? "Arabic",
+        language: language === "ar" ? "Arabic" : "English",
         exact_word: word,
         task: "Is this exact spelling an accepted standalone word for a word board game?",
       }),
