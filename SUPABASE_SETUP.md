@@ -2,15 +2,28 @@
 
 The repository now contains the browser client and database schema for accounts, profiles, friends, presence, rooms, and chat. The app does not connect to a shared database until you create a Supabase project and configure the public project URL and anon/publishable key.
 
-## 1. Create the backend
+## 1. Existing backend project
 
-1. Open https://supabase.com/dashboard and create a new project.
-2. Open **SQL Editor** in the project.
-3. Open `supabase/schema.sql` in this repository, copy its full contents, paste it into SQL Editor, and run it.
-4. In **Authentication → URL Configuration**, set the Site URL to `https://husaamasb.github.io`.
-5. Add these Redirect URLs:
-   - `https://husaamasb.github.io/-Scrabble-/**`
-   - `http://localhost:5173/**`
+The Scrabble Supabase project has already been created and its database schema has been installed.
+
+- Project ref: `rwcwuxraekgpaeujhxbg`
+- Region: `ap-south-1` (Mumbai)
+- Project URL: `https://rwcwuxraekgpaeujhxbg.supabase.co`
+- Database: PostgreSQL 17
+- The complete schema is tracked in `supabase/schema.sql` and installed as migrations.
+
+The public browser configuration is stored in `.env.production`. It contains only the Supabase project URL and publishable key. Never add a `service_role` or secret key to the repository or browser app.
+
+### One-time dashboard configuration still required
+
+In Supabase → **Authentication → URL Configuration**:
+
+- Set Site URL to `https://husaamasb.github.io`.
+- Add Redirect URLs:
+  - `https://husaamasb.github.io/-Scrabble-/**`
+  - `http://localhost:5173/**`
+
+In **Authentication → Email Templates**, make sure the confirmation email includes `{{ .Token }}` so the six-digit email verification code works. Configure and test email delivery before inviting real users.
 
 ## 2. Configure email verification
 
