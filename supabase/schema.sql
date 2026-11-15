@@ -1729,3 +1729,69 @@ end;
 $function$;
 revoke all on function public.claim_scrabble_daily_challenge(date,text) from public, anon;
 grant execute on function public.claim_scrabble_daily_challenge(date,text) to authenticated;
+
+
+-- Private in-app notifications for friend requests, room invites, and direct messages.
+create table if not exists public.scrabble_notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  actor_id uuid references public.profiles(id) on delete set null,
+  kind text not null check (kind in ('friend_request','room_invite','direct_message')),
+  reference_id uuid,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+create index if not exists scrabble_notifications_user_created_idx
+  on public.scrabble_notifications(user_id, created_at desc);
+alter table public.scrabble_notifications enable row level security;
+revoke all on public.scrabble_notifications from anon, authenticated;
+grant select on public.scrabble_notifications to authenticated;
+create policy "players read their own notifications"
+  on public.scrabble_notifications for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+create or replace function public.mark_scrabble_notification_read(notification_id uuid)
+returns void language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  update public.scrabble_notifications
+     set read_at = coalesce(read_at, now())
+   where id = notification_id and user_id = auth.uid();
+end;
+$$;
+revoke all on function public.mark_scrabble_notification_read(uuid) from public, anon;
+grant execute on function public.mark_scrabble_notification_read(uuid) to authenticated;
+
+create or replace function public.emit_scrabble_notification()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+declare target_user uuid; actor uuid; event_kind text;
+begin
+  if tg_table_name = 'friend_requests' then
+    target_user := new.receiver_id; actor := new.sender_id; event_kind := 'friend_request';
+  elsif tg_table_name = 'room_invites' then
+    target_user := new.receiver_id; actor := new.sender_id; event_kind := 'room_invite';
+  elsif tg_table_name = 'direct_messages' then
+    target_user := new.recipient_id; actor := new.sender_id; event_kind := 'direct_message';
+  else
+    return new;
+  end if;
+  if target_user is not null and target_user <> actor then
+    insert into public.scrabble_notifications(user_id, actor_id, kind, reference_id)
+    values (target_user, actor, event_kind, new.id);
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.emit_scrabble_notification() from public, anon, authenticated;
+drop trigger if exists notify_scrabble_friend_request on public.friend_requests;
+create trigger notify_scrabble_friend_request after insert on public.friend_requests
+for each row execute function public.emit_scrabble_notification();
+drop trigger if exists notify_scrabble_room_invite on public.room_invites;
+create trigger notify_scrabble_room_invite after insert on public.room_invites
+for each row execute function public.emit_scrabble_notification();
+drop trigger if exists notify_scrabble_direct_message on public.direct_messages;
+create trigger notify_scrabble_direct_message after insert on public.direct_messages
+for each row execute function public.emit_scrabble_notification();
+alter publication supabase_realtime add table public.scrabble_notifications;
