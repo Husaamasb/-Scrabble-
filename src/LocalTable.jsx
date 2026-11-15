@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PREMIUM, evaluateMove } from './game/engine.js';
 import { createGameSession, commitTurn, exchangeFromRack, passTurn } from './game/session.js';
-import { createWiktionaryValidator } from './game/wordValidator.js';
+import { createHybridDictionaryValidator } from './cloud/dictionary.js';
 import { findBotMoves, orderBotMoves } from './game/bot.js';
 
 const names = ['اللاعب الأول','اللاعب الثاني','اللاعب الثالث','اللاعب الرابع'];
@@ -34,7 +34,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
         const moves=orderBotMoves(findBotMoves(session),difficulty);
         for(const move of moves){
           if(cancelled)return;
-          const result=await commitTurn(session,move.placements,createWiktionaryValidator());
+          const result=await commitTurn(session,move.placements,createHybridDictionaryValidator());
           if(result.ok){if(!cancelled){setSession(result.session);setMessage(ar?'لعب الكمبيوتر '+move.word+'  وجاب '+result.move.total+' نقطة.':'Bot played '+move.word+' for '+result.move.total+' points.');}return;}
         }
         if(!cancelled){setSession(passTurn(session).session);setMessage(ar?'الكمبيوتر ما لقى حركة مقبولة، فعدّى دوره.':'The bot found no accepted move and passed.');}
@@ -85,7 +85,7 @@ export default function LocalTable({ language, onExit, botMode=false }) {
     if(!pending.length||busy)return;
     setBusy(true);setMessage(ar?'نتحقق من الكلمات…':'Checking dictionary…');
     try{
-      const result=await commitTurn(session,pending,createWiktionaryValidator());
+      const result=await commitTurn(session,pending,createHybridDictionaryValidator());
       if(!result.ok){setMessage(ar?'ما قبلنا الحركة: '+result.reason:'Move rejected: '+result.reason);return;}
       setSession(result.session);setPending([]);setSelected(null);setExchange([]);
       setMessage(ar?'قبلنا حركتك وانضافت '+result.move.total+' نقطة.':'Move accepted: '+result.move.total+' points.');
