@@ -2691,3 +2691,12 @@ on public.room_invites(room_id, receiver_id)
 where status = 'pending';
 
 grant execute on function public.join_room_by_code(text) to authenticated;
+
+
+-- Publish room invitations so recipients receive live invite updates.
+do $$
+begin
+  alter publication supabase_realtime add table public.room_invites;
+exception when duplicate_object then
+  null;
+end $$;
