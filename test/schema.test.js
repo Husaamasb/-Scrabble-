@@ -69,6 +69,20 @@ test('authoritative online move RPC and dictionary cache are included in the rep
 });
 
 
+
+test('password login requires a verified email OTP before creating the main session',()=>{
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  const auth=readFileSync(new URL('../src/cloud/supabase.js',import.meta.url),'utf8');
+  const passwordCheck=cloud.indexOf('await verifyPasswordWithoutPersisting(address,password)');
+  const otpSend=cloud.indexOf("supabase.auth.signInWithOtp({email:address,options:{shouldCreateUser:false}})");
+  assert.ok(passwordCheck>=0&&otpSend>passwordCheck);
+  assert.ok(auth.includes('persistSession: false'));
+  assert.ok(auth.includes("verifier.auth.signOut({ scope: 'local' })"));
+  assert.ok(cloud.includes("setOtpType('email')"));
+  assert.ok(cloud.includes('supabase.auth.verifyOtp({email,token:otp,type:otpType})'));
+  assert.ok(!cloud.includes('supabase.auth.signInWithPassword'));
+});
+
 test('room creator selects the match end condition without adding turn timers',()=>{
   const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
   assert.match(schema,/end_condition text not null default 'classic' check\(end_condition in \('classic','bag_empty'\)\)/);
