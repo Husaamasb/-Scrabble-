@@ -24,7 +24,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 
 - Responsive Arabic/English interface and 15×15 board.
 - Scrabble premium-square scoring, cross-word scoring, blank-tile zero value, and 50-point seven-tile bonus.
-- User-specified Arabic (110) and English (100) tile sets.
+- User-specified Arabic (108) and English (100) tile sets.
 - Interactive wooden chest with a hinged lid, one horizontally scrollable row of face-down wooden tiles that flip to reveal on tap, a remaining-tile counter, selection highlights, rack refill, undo, and tile exchange. The computer's rack stays hidden during bot turns.
 - AI-first Arabic/English dictionary for authenticated cloud play: server-side admin overrides, trusted AI verdict cache, then OpenAI Responses API word review. Wiktionary is a fallback only if the AI provider is unavailable; guest/offline play uses exact Wiktionary checks. Provider failures never auto-approve words.
 - Confirmed dictionary entries are cached locally for later offline checks.
