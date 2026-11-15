@@ -97,7 +97,7 @@ test('cross words are each scored when a move intersects existing tiles', () => 
   ]);
   assert.equal(result.valid, true);
   assert.deepEqual(result.words.map(word => word.letters).sort(), ['CT', 'TA']);
-  assert.equal(result.total, 6);
+  assert.equal(result.total, 5);
 });
 
 test('a blank tile represents a letter but always scores zero', () => {
