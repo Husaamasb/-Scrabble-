@@ -99,3 +99,9 @@ The online section includes global, weekly, monthly, Arabic-game, and English-ga
 
 - The wooden letter chest is part of both local and online match screens. Its hinged lid opens and closes, with the player's tiles shown in one organized row.
 - In local games, the next seven shuffled bag tiles can be revealed one at a time; revealing another tile turns the previous one face down. Online games never expose the server's hidden tile bag.
+
+
+## Account preferences and branding
+
+- Signed-in players can save app language, light/dark appearance, sound, and notification preferences to their private account settings.
+- The original user-provided Scrabble Arabic logo is restored in the app header and retained as the app icon artwork. It is used as supplied, not redrawn.
