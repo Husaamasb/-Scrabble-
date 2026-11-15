@@ -1932,6 +1932,7 @@ begin
  if uid is null then raise exception 'Sign in required'; end if;
  if recipient is null or recipient=uid then raise exception 'Choose another player'; end if;
  if not exists(select 1 from public.friendships where user_low=least(uid,recipient) and user_high=greatest(uid,recipient)) then raise exception 'Gifts can only be sent to friends'; end if;
+ if exists(select 1 from public.scrabble_inventory where user_id=recipient and item_key=target_item) then raise exception 'Friend already owns this item'; end if;
  perform 1 from public.scrabble_inventory where user_id=uid and item_key=target_item for update;
  if not found then raise exception 'You do not own this item'; end if;
  delete from public.scrabble_inventory where user_id=uid and item_key=target_item;
