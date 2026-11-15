@@ -2103,3 +2103,13 @@ as $$ declare v public.scrabble_room_removal_votes; active_count integer; eligib
 end; $$;
 revoke all on function public.cast_scrabble_room_removal_vote(uuid,boolean) from public,anon;
 grant execute on function public.cast_scrabble_room_removal_vote(uuid,boolean) to authenticated;
+
+do $$
+begin
+ if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='scrabble_room_removal_votes') then
+   alter publication supabase_realtime add table public.scrabble_room_removal_votes;
+ end if;
+ if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='scrabble_room_removal_ballots') then
+   alter publication supabase_realtime add table public.scrabble_room_removal_ballots;
+ end if;
+end $$;
