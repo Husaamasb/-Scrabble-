@@ -2342,3 +2342,10 @@ create trigger zz_sync_scrabble_tournament_match_result after update of status o
 for each row when(old.status='playing' and new.status='finished')
 execute function public.sync_scrabble_tournament_match_result();
 drop function if exists public.report_scrabble_tournament_match(uuid,uuid);
+
+do $$
+begin
+ if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='scrabble_tournament_matches') then
+  alter publication supabase_realtime add table public.scrabble_tournament_matches;
+ end if;
+end $$;
