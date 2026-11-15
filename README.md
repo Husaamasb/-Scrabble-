@@ -42,7 +42,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Complete authoritative online Scrabble gameplay: server-side move geometry, dictionary verification, scoring, rack refill, endgame settlement, reconnect recovery, and online results.
 - Full account-backed social features, matchmaking, invites, tournaments, daily challenges, rankings, XP, coins, badges, store, rewards, push notifications, and statistics.
 - Full hinged chest animation and final device-specific icon packaging. **The approved artwork in `public/icon.svg` must remain unchanged.**
-- Cloud backend activation requires a Supabase project, running `supabase/schema.sql`, and setting the two public Vite variables described in `SUPABASE_SETUP.md`.
+- Supabase project provisioned and connected to the GitHub Pages production build through the public values in `.env.production`; database schema and migrations are installed. Authentication redirect URLs and the six-digit email template still need one-time dashboard configuration (see `SUPABASE_SETUP.md`).
 - Native Android/iOS projects must be generated and built using Android Studio/SDK or macOS/Xcode. No signed APK or IPA is included yet.
 - Full end-to-end testing, including Arabic dictionary coverage and real-device offline behavior.
 
