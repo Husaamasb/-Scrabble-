@@ -35,6 +35,12 @@ Password recovery uses Supabase's secure recovery email link.
 
 In **Authentication → Providers**, enable Google and/or Apple and enter the credentials from those providers. Set the provider callback URL to the callback URL shown by your Supabase project. The buttons remain unavailable until the provider is configured.
 
+## Secure administration
+
+The admin section checks the server-managed Auth `app_metadata.scrabble_admin` claim. It never trusts editable user metadata. Only the project owner should assign this claim to the verified owner account from Supabase Authentication user management. Set the user’s **app_metadata** to include `{"scrabble_admin": true}`; do not place this field in user_metadata. Refresh the account session after the change.
+
+The admin panel reviews player profiles and rooms, closes waiting rooms, reviews player reports, and manages dictionary overrides. The database enforces admin-only RLS policies. Playing rooms cannot be force-closed from the admin panel, and private racks are never included in spectator views.
+
 ## AI dictionary provider
 
 The online word validator checks Wiktionary first. If an exact entry is missing and an AI provider key is configured, the server asks the AI lexicon reviewer to check the exact spelling. Configure these values as **Supabase Edge Function secrets** (never in GitHub or browser code):
