@@ -1,0 +1,61 @@
+name: Build Scrabble for iOS Simulator
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-simulator
+  cancel-in-progress: true
+
+jobs:
+  ios-simulator:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm install
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Generate native iOS project
+        run: npx cap add ios
+
+      - name: Sync Capacitor iOS project
+        run: npx cap sync ios
+
+      - name: Build unsigned iOS Simulator app
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package simulator app
+        run: |
+          cd build/ios/Build/Products/Debug-iphonesimulator
+          /usr/bin/zip -r "$GITHUB_WORKSPACE/Scrabble-iOS-Simulator.zip" App.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scrabble-iOS-Simulator
+          path: Scrabble-iOS-Simulator.zip
+          if-no-files-found: error
+          retention-days: 14
