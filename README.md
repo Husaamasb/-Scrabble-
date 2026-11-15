@@ -1,6 +1,8 @@
-# Scrabble
+# سكرابل العربية | Scrabble
 
-A bilingual Arabic/English Scrabble web app built with React and Vite.
+A bilingual Arabic/English Scrabble web app built with React, Vite, and Capacitor.
+
+**Browser version:** https://husaamasb.github.io/-Scrabble-/
 
 ## Run locally
 
@@ -23,8 +25,8 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Responsive Arabic/English interface and 15×15 board.
 - Scrabble premium-square scoring, cross-word scoring, blank-tile zero value, and 50-point seven-tile bonus.
 - User-specified Arabic (110) and English (100) tile sets.
-- Face-down wooden tile chest, rack draw, undo, and return-pending-tiles controls.
-- Hybrid Arabic/English dictionary: authenticated games check server-side admin overrides and cache, exact Wiktionary entries, then a conservative OpenAI Responses API lexicon review for missing entries. Guest/offline games retain exact Wiktionary checks. Provider failures never auto-approve words.
+- Interactive wooden chest with a hinged lid, a single row of the active player's tiles, selection highlights, rack refill, undo, and tile exchange. The computer's rack stays hidden during bot turns.
+- AI-first Arabic/English dictionary for authenticated cloud play: server-side admin overrides, trusted AI verdict cache, then OpenAI Responses API word review. Wiktionary is a fallback only if the AI provider is unavailable; guest/offline play uses exact Wiktionary checks. Provider failures never auto-approve words.
 - Confirmed dictionary entries are cached locally for later offline checks.
 - Accepted move scoring, rack refill, and round history in the visible game screen.
 - Playable same-device multiplayer mode for 2–4 players, with starting-player draw, private turn handoff, scoring, pass/exchange flow, match history, winner display, and automatic local match recovery.
@@ -34,7 +36,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
 - Supabase integration: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
 - Friend QR sharing and image-based QR scanning (on browsers with BarcodeDetector), with manual player-ID search as a fallback.
-- Account-backed tournament lobby with 4/8/16-player registration, host-controlled starts, single-elimination rounds, automatic byes, and bracket progression; tournament hosts currently record match winners manually.
+- Account-backed tournament lobby with 4/8/16-player registration, host-controlled starts, single-elimination rounds, automatic byes, and progression from completed room match results.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated word placement, dictionary checks, scoring, rack refill, pass, exchange, and endgame settlement.
 - Capacitor Android/iOS support plus an automated macOS GitHub Actions build for the iOS Simulator.
 - Automated tests for the board engine, tile bags, sessions, and dictionary adapter.
@@ -43,9 +45,9 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 
 - Match tournament brackets to live room results automatically (current tournament hosts record bracket winners manually); add tournament scheduling, prizes, and spectator mode.
 - Full account-backed social features, matchmaking, invites, tournaments, daily challenges, rankings, XP, coins, badges, store, rewards, push notifications, and statistics.
-- Full hinged chest animation and final device-specific icon packaging. **The approved artwork in `public/icon.svg` must remain unchanged.**
-- Supabase project provisioned and connected to the GitHub Pages production build through the public values in `.env.production`; database schema and migrations are installed. Authentication redirect URLs and the six-digit email template still need one-time dashboard configuration (see `SUPABASE_SETUP.md`).
-- Native Android/iOS projects must be generated and built using Android Studio/SDK or macOS/Xcode. No signed APK or IPA is included yet.
+- Final device-specific icon packaging and visual QA on real devices. **The approved artwork in `public/icon.svg` must remain unchanged.**
+- Complete end-to-end auth verification still needs real accounts and dashboard configuration for redirect URLs, SMTP, and the six-digit email template (see `SUPABASE_SETUP.md`). The administrator account must also be granted its server-managed `scrabble_admin` app metadata.
+- Native Android/iOS release builds still need Android Studio/SDK or macOS/Xcode, real-device testing, and platform signing. The iOS Simulator workflow is unsigned and is not an installable iPhone IPA.
 - Full end-to-end testing, including Arabic dictionary coverage and real-device offline behavior.
 
 Dictionary data is retrieved from Wiktionary's public MediaWiki API. New words require an internet connection; previously confirmed exact entries are cached on the device. This adapter checks dictionary entry existence and does not generate or suggest words.
