@@ -20,7 +20,7 @@ npx cap add ios
 npm run cap:sync
 ```
 
-Run `npx cap add ios` only on macOS with Xcode installed. Native platform directories are generated locally by Capacitor and are not included in the browser-only GitHub Pages deployment. The repository's **Build Scrabble for iOS Simulator** GitHub Actions workflow also generates the iOS project on a macOS runner, builds an unsigned Simulator `.app`, and uploads `Scrabble-iOS-Simulator.zip` as a 14-day artifact. This verifies the native iOS project build, but the simulator app is not an installable iPhone IPA.
+Run `npx cap add ios` only on macOS with Xcode installed. Native platform directories are generated locally by Capacitor and are not included in the browser-only GitHub Pages deployment. The repository's **Build Scrabble for Android** GitHub Actions workflow generates the Android project on an Ubuntu runner, builds a debug APK, and uploads `app-debug.apk` as a 14-day artifact. The **Build Scrabble for iOS Simulator** workflow generates the iOS project on a macOS runner, builds an unsigned Simulator `.app`, and uploads `Scrabble-iOS-Simulator.zip` as a 14-day artifact. The Android debug APK is for testing; the simulator app is not an installable iPhone IPA.
 
 ## Android APK
 
@@ -29,7 +29,7 @@ npm run cap:sync
 npm run android
 ```
 
-In Android Studio, choose **Build → Build Bundle(s) / APK(s) → Build APK(s)** for a test APK. For release, use **Generate Signed Bundle / APK** and keep the signing key private. Test installation and app icon on a real Android device before distribution.
+For an automated test APK, open the GitHub Actions run named **Build Scrabble for Android** and download the `Scrabble-Android-Debug` artifact. You can also build locally in Android Studio using **Build → Build Bundle(s) / APK(s) → Build APK(s)**. For release, use **Generate Signed Bundle / APK** and keep the signing key private. Test installation and app icon on a real Android device before distribution.
 
 ## iPhone / iPad
 
