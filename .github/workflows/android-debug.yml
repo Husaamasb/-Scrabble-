@@ -85,8 +85,8 @@ jobs:
             adb shell monkey -p com.husaamasb.scrabble 1
             sleep 12
             adb shell pidof com.husaamasb.scrabble >/dev/null || { echo "Scrabble process is not running after launch"; adb logcat -d -t 500; exit 1; }
-            adb shell screencap -p /sdcard/scrabble-emulator.png
-            adb pull /sdcard/scrabble-emulator.png "$GITHUB_WORKSPACE/scrabble-emulator.png"
+            adb exec-out screencap -p > "$GITHUB_WORKSPACE/scrabble-emulator.png"
+            test -s "$GITHUB_WORKSPACE/scrabble-emulator.png"
 
       - uses: actions/upload-artifact@v4
         with:
