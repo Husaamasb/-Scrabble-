@@ -34,7 +34,7 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 - Session engine for 2–4 players, starting-player draw, pass/exchange flow, and endgame settlement.
 - Local active-game autosave and JSON backup import/export.
 - Installable web-app manifest, service-worker shell cache, and the approved original icon asset at `public/icon.svg`.
-- Supabase integration: email/password auth, email OTP verification, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
+- Supabase integration: email/password sign-up and login, six-digit email verification for new accounts, password recovery, Google/Apple OAuth hooks, player profiles, friend requests, online presence, room creation/join-by-code, room chat, and direct messages when configured.
 - Friend QR sharing and image-based QR scanning (on browsers with BarcodeDetector), with manual player-ID search as a fallback.
 - Account-backed tournament lobby with 4/8/16-player registration, host-controlled starts, single-elimination rounds, automatic byes, and progression from completed room match results.
 - Cloud room initialization deals language-specific tiles on the server, keeps each rack private, resolves the starting player with tie redraws, and supports server-validated word placement, dictionary checks, scoring, rack refill, pass, exchange, and endgame settlement.
@@ -43,14 +43,15 @@ GitHub Actions runs automated tests and the production build on pushes to `main`
 
 ## Still required for a complete release
 
-- Match tournament brackets to live room results automatically (current tournament hosts record bracket winners manually); add tournament scheduling, prizes, and spectator mode.
-- Full account-backed social features, matchmaking, invites, tournaments, daily challenges, rankings, XP, coins, badges, store, rewards, push notifications, and statistics.
+- A separate six-digit OTP challenge on every password sign-in is not implemented; the current email code verifies new account creation. SMTP delivery, Google/Apple OAuth, and password recovery still need real-account testing.
+- Finish profile avatar selection and achievement/badge display.
+- Complete end-to-end tests with at least two real players, including room reconnects, pass/exchange, match settlement, and automatic tournament advancement.
+- Verify a real authenticated AI dictionary request in the Supabase Edge Function logs; code and deployments are ready, but a live provider verdict has not yet been observed in the recent logs.
+- The owner account must be granted `scrabble_admin` in server-managed App Metadata before the admin dashboard is accessible.
 - Final device-specific icon packaging and visual QA on real devices. **The approved artwork in `public/icon.svg` must remain unchanged.**
-- Complete end-to-end auth verification still needs real accounts and dashboard configuration for redirect URLs, SMTP, and the six-digit email template (see `SUPABASE_SETUP.md`). The administrator account must also be granted its server-managed `scrabble_admin` app metadata.
-- Native Android/iOS release builds still need Android Studio/SDK or macOS/Xcode, real-device testing, and platform signing. The iOS Simulator workflow is unsigned and is not an installable iPhone IPA.
-- Full end-to-end testing, including Arabic dictionary coverage and real-device offline behavior.
+- Signed Android/iOS store releases require real-device testing and platform signing. The Android artifact is a debug APK; the iOS Simulator artifact is unsigned and is not an installable iPhone IPA.
 
-Dictionary data is retrieved from Wiktionary's public MediaWiki API. New words require an internet connection; previously confirmed exact entries are cached on the device. This adapter checks dictionary entry existence and does not generate or suggest words.
+Guest/offline dictionary checks use Wiktionary's public MediaWiki API and require an internet connection for words not already cached. Authenticated cloud play uses the AI-first server validator, with Wiktionary only as a fallback if the AI provider is unavailable. The validator judges exact words and does not generate or suggest words.
 
 The repository is still under active development and must not be treated as a finished release.
 
@@ -101,8 +102,7 @@ The online section includes global, weekly, monthly, Arabic-game, and English-ga
 
 ## Gameplay interface
 
-- The wooden letter chest is part of both local and online match screens. Its hinged lid opens and closes, with the player's tiles shown in one organized row.
-- In local games, the next seven shuffled bag tiles can be revealed one at a time; revealing another tile turns the previous one face down. Online games never expose the server's hidden tile bag.
+- The wooden letter chest is part of both local and online match screens. Its hinged lid opens and closes, with the active player's rack shown in one organized row. In bot matches, the computer's rack remains hidden. Online games never expose the server's hidden tile bag.
 
 
 ## Account preferences and branding
@@ -126,7 +126,7 @@ The server-side AI dictionary uses an OpenAI API key stored only as a Supabase E
 - `OPENAI_API_KEY`: the private API key (never put it in the browser or GitHub).
 - `OPENAI_DICTIONARY_MODEL` (optional): defaults to `gpt-4.1-mini`.
 
-The AI review runs only when the exact Wiktionary lookup has no entry. Results are cached server-side; admin dictionary overrides take priority. Without the key, the app safely continues using Wiktionary. Configure the key at [Supabase Edge Function Secrets](https://supabase.com/dashboard/project/rwcwuxraekgpaeujhxbg/functions/secrets).
+The server checks admin dictionary overrides first, then trusted AI verdict cache entries, then asks the OpenAI Responses API to judge the exact spelling. Wiktionary is used only if the AI provider is unavailable. Results are cached server-side. Without the key, the app safely falls back to Wiktionary. Configure the key at [Supabase Edge Function Secrets](https://supabase.com/dashboard/project/rwcwuxraekgpaeujhxbg/functions/secrets).
 
 
 ## Admin operations
