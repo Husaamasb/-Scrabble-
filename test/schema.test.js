@@ -92,6 +92,8 @@ test('daily challenges are driven by server match results and claim XP through a
 test('in-app notifications are private, event-driven, and readable through realtime',()=>{
   assert.ok(schema.includes('create table if not exists public.scrabble_notifications'));
   assert.ok(schema.includes('players read their own notifications'));
+  assert.ok(schema.includes('players mark their own notifications read'));
+  assert.match(schema,/function public\\.mark_scrabble_notification_read\\(notification_id uuid\\)[\\s\\S]*?security invoker/i);
   assert.ok(schema.includes('create trigger notify_scrabble_friend_request'));
   assert.ok(schema.includes('create trigger notify_scrabble_room_invite'));
   assert.ok(schema.includes('create trigger notify_scrabble_direct_message'));
