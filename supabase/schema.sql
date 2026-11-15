@@ -1749,17 +1749,24 @@ grant select on public.scrabble_notifications to authenticated;
 create policy "players read their own notifications"
   on public.scrabble_notifications for select to authenticated
   using ((select auth.uid()) = user_id);
+grant update(read_at) on public.scrabble_notifications to authenticated;
+drop policy if exists "players mark their own notifications read" on public.scrabble_notifications;
+create policy "players mark their own notifications read"
+on public.scrabble_notifications for update to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
 
 create or replace function public.mark_scrabble_notification_read(notification_id uuid)
-returns void language plpgsql security definer set search_path = public
-as $$
+returns void language plpgsql security invoker set search_path = public
+as $
 begin
   if auth.uid() is null then raise exception 'Sign in required'; end if;
   update public.scrabble_notifications
      set read_at = coalesce(read_at, now())
    where id = notification_id and user_id = auth.uid();
 end;
-$$;
+$;
 revoke all on function public.mark_scrabble_notification_read(uuid) from public, anon;
 grant execute on function public.mark_scrabble_notification_read(uuid) to authenticated;
 
