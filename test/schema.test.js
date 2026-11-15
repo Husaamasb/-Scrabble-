@@ -139,15 +139,15 @@ test('gifts transfer owned cosmetics only between friends and notify the recipie
   assert.ok(cloud.includes('giftReceived'));
 });
 
-test('wooden chest shows a tappable shuffled row of next tiles and resets reveals when bag changes',()=>{
+test('wooden chest displays the player's own rack without exposing the bot rack',()=>{
   const local=readFileSync(new URL('../src/LocalTable.jsx',import.meta.url),'utf8');
-  assert.ok(local.includes('session.bag.slice(0,7)'));
-  assert.ok(local.includes('className={\'chest-tile \'+(flipped?\'flipped\':\'face-down\')}'));
-  assert.ok(local.includes('setChestFlipId(current=>current===tileId?null:tileId)'));
-  assert.ok(local.includes('useEffect(()=>setChestFlipId(null),[session?.bag])'));
+  assert.ok(local.includes('player.rack.map(tile=>'));
+  assert.ok(local.includes('const humanTurn=!botMode||session.currentPlayer===0;'));
+  assert.ok(local.includes('chestOpen&&humanTurn'));
+  assert.ok(local.includes('placedIds.has(tile.id)'));
   const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
   assert.ok(cloud.includes('Wooden letter chest'));
-  assert.ok(cloud.includes('onlineChestOpen&&<div className=\"chest-row cloud-rack-tiles\">'));
+  assert.ok(cloud.includes('onlineChestOpen&&<div className="chest-row cloud-rack-tiles">'));
 });
 
 test('the main profile route displays the authenticated cloud profile rather than a local demo',()=>{
