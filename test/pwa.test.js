@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 
 test('web app manifest is valid and installable from a project subpath',async()=>{
   const manifest=JSON.parse(await readFile(new URL('../public/manifest.webmanifest',import.meta.url),'utf8'));
-  assert.equal(manifest.name,'Scrabble');
+  assert.equal(manifest.name,'سكرابل العربية');
+  assert.equal(manifest.short_name,'سكرابل');
   assert.equal(manifest.display,'standalone');
   assert.equal(manifest.start_url,'./');
   assert.equal(manifest.scope,'./');
