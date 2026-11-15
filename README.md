@@ -93,3 +93,9 @@ The online section includes global, weekly, monthly, Arabic-game, and English-ga
 - The cosmetic store uses a server-controlled catalog, a virtual coin wallet, and a private inventory. Purchases are checked and charged in one database transaction; no real-money payments are enabled.
 - Players can gift owned cosmetics to friends. Gift transfers are validated on the server, recipients can accept or reject, rejected items return to the sender, and gift notifications are generated automatically.
 - The Supabase schema includes row-level security for notification, wallet, inventory, and catalog data. The store purchase RPC checks the authenticated user and cannot be called by anonymous users.
+
+
+## Gameplay interface
+
+- The wooden letter chest is part of both local and online match screens. Its hinged lid opens and closes, with the player's tiles shown in one organized row.
+- In local games, the next seven shuffled bag tiles can be revealed one at a time; revealing another tile turns the previous one face down. Online games never expose the server's hidden tile bag.
