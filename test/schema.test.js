@@ -149,3 +149,8 @@ test('wooden chest shows a tappable shuffled row of next tiles and resets reveal
   assert.ok(cloud.includes('Wooden letter chest'));
   assert.ok(cloud.includes('onlineChestOpen&&<div className=\"chest-row cloud-rack-tiles\">'));
 });
+
+test('the main profile route displays the authenticated cloud profile rather than a local demo',()=>{
+  const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
+  assert.ok(dashboard.includes("section==='profile'?'account':section"));
+});
