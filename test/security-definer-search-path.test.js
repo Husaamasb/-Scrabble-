@@ -37,8 +37,8 @@ test('all exposed security-definer functions pin an empty search_path', () => {
     const bodyStart = schema.indexOf('$function$', match.index);
     assert.ok(bodyStart > match.index, name + ' has a function body');
     const definition = schema.slice(match.index, bodyStart);
-    assert.match(definition, /set\\s+search_path\\s*=\\s*''/i, name + ' pins the empty search_path');
+    assert.match(definition, /set\s+search_path\s*=\s*''/i, name + ' pins the empty search_path');
     assert.match(migration, new RegExp('alter\\s+function\\s+public\\.' + name + '\\s*\\(' , 'i'), name + ' is included in migration');
   }
-  assert.equal((migration.match(/ALTER FUNCTION public\\./g) || []).length, functions.length);
+  assert.equal((migration.match(/ALTER FUNCTION public\./g) || []).length, functions.length);
 });
