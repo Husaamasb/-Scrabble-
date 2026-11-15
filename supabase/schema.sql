@@ -2824,3 +2824,26 @@ with check (receiver_id=(select auth.uid()) and status in ('accepted','rejected'
 
 revoke all on function public.is_scrabble_room_member(uuid) from public, anon;
 grant execute on function public.is_scrabble_room_member(uuid) to authenticated;
+
+
+-- Owner-only cloud backup for offline local and computer games.
+create table if not exists public.scrabble_saved_games (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  game_key text not null check (game_key ~ '^(ar|en):(bot|local)$'),
+  language text not null check (language in ('ar','en')),
+  mode text not null check (mode in ('bot','local')),
+  session jsonb not null check (jsonb_typeof(session)='object'),
+  updated_at timestamptz not null default now(),
+  primary key (user_id,game_key),
+  check (split_part(game_key,':',1)=language and split_part(game_key,':',2)=mode)
+);
+
+alter table public.scrabble_saved_games enable row level security;
+create policy "players manage own saved games"
+  on public.scrabble_saved_games
+  for all
+  to authenticated
+  using ((select auth.uid())=user_id)
+  with check ((select auth.uid())=user_id);
+
+grant select,insert,update,delete on public.scrabble_saved_games to authenticated;
