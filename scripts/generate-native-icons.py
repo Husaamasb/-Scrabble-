@@ -59,4 +59,4 @@ if ios_icons.exists():
         }],
         "info": {"author": "xcode", "version": 1}
     }
-    (ios_icons / "Contents.json").write_text(json.dumps(contents, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    (ios_icons / "Contents.json").write_text(json.dumps(contents, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
