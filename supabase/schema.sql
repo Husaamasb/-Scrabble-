@@ -86,6 +86,8 @@ create table if not exists public.room_members (
   seat int not null check(seat between 1 and 4),
   is_ready boolean not null default false,
   joined_at timestamptz not null default now(),
+  is_withdrawn boolean not null default false,
+  last_seen_at timestamptz not null default now(),
   primary key(room_id,user_id),
   unique(room_id,seat)
 );
@@ -290,6 +292,18 @@ create table if not exists public.room_player_private (
   updated_at timestamptz not null default now(),
   primary key(room_id,user_id)
 );
+
+-- Server-owned tile bag. Browser roles have no direct access; trusted RPCs own draws.
+create table if not exists public.room_tile_bag (
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  position integer not null,
+  tile jsonb not null,
+  primary key(room_id,position)
+);
+alter table public.room_tile_bag enable row level security;
+revoke all on public.room_tile_bag from public, anon, authenticated;
+grant all on public.room_tile_bag to service_role;
+
 
 alter table public.room_player_private enable row level security;
 drop policy if exists "players read only their private room state" on public.room_player_private;
@@ -732,3 +746,497 @@ select cron.schedule(
   '10 seconds',
   'select public.expire_scrabble_disconnects();'
 );
+
+
+-- Exact server-side tile distributions, first-player draw, and private rack dealing.
+create or replace function public.scrabble_start_rank(p_letter text, p_language text)
+ RETURNS integer
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$
+  select case
+    when p_letter = '★' then 10000
+    when p_language = 'en' then
+      case when upper(p_letter) between 'A' and 'Z'
+        then ascii(upper(p_letter)) - ascii('A')
+        else 10000 end
+    when p_language = 'ar' then
+      case
+        when p_letter in ('ا','أ','إ','آ','ء','ؤ','ئ','ئ أول الكلمة') then 0
+        when p_letter in ('لا','لأ','لإ','لآ') then 22
+        when p_letter = 'ة' then 25
+        when p_letter in ('ى','يء') then 27
+        else case when strpos('ابتثجحخدذرزسشصضطظعغفقكلمنهوي',p_letter)>0 then strpos('ابتثجحخدذرزسشصضطظعغفقكلمنهوي',p_letter)-1 else 10000 end
+      end
+    else 10000
+  end;
+$function$
+
+create or replace function public.start_scrabble_room(target_room uuid)
+ RETURNS rooms
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  target public.rooms;
+  member_count integer;
+  ready_count integer;
+  player record;
+  draw_row record;
+  rack_json jsonb;
+  start_json jsonb;
+  players_json jsonb;
+  scores_json jsonb;
+  dealt_count integer;
+  eligible_seats integer[];
+  tied_seats integer[];
+  seat_index integer;
+  best_rank integer;
+  current_rank integer;
+  round_no integer;
+  chosen_seat integer;
+  winner_index integer;
+  returned_position integer;
+  draws_this_round jsonb;
+  all_draws jsonb := '[]'::jsonb;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  select * into target from public.rooms where id=target_room for update;
+  if not found then raise exception 'Room not found'; end if;
+  if target.host_id <> auth.uid() then raise exception 'Only the host can start the match'; end if;
+  if target.status <> 'waiting' then raise exception 'Room has already started'; end if;
+
+  select count(*), count(*) filter (where is_ready or user_id=auth.uid())
+    into member_count, ready_count
+    from public.room_members where room_id=target_room and not is_withdrawn;
+  if member_count < 2 then raise exception 'At least two players are required'; end if;
+  if member_count <> ready_count then raise exception 'All players must be ready'; end if;
+
+  delete from public.room_tile_bag where room_id=target_room;
+  delete from public.room_player_private where room_id=target_room;
+
+  if target.language='en' then
+    insert into public.room_tile_bag(room_id,position,tile)
+    select target_room, row_number() over(order by random())::integer,
+      jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
+    from (values
+      ('A',1,9),('B',3,2),('C',3,2),('D',2,4),('E',1,12),('F',4,2),
+      ('G',2,3),('H',4,2),('I',1,9),('J',8,1),('K',5,1),('L',1,4),
+      ('M',3,2),('N',1,6),('O',1,8),('P',3,2),('Q',10,1),('R',1,6),
+      ('S',1,4),('T',1,6),('U',1,4),('V',4,2),('W',4,2),('X',8,1),
+      ('Y',4,2),('Z',10,1),('★',0,2)
+    ) as v(letter,points,quantity)
+    cross join lateral generate_series(1,v.quantity);
+  elsif target.language='ar' then
+    insert into public.room_tile_bag(room_id,position,tile)
+    select target_room, row_number() over(order by random())::integer,
+      jsonb_build_object('id',gen_random_uuid(),'letter',v.letter,'points',v.points,'isBlank',v.letter='★')
+    from (values
+      ('ا',1,8),('إ',1,2),('أ',1,2),('آ',8,1),('ب',1,4),('ج',1,3),
+      ('ح',1,3),('خ',1,3),('د',1,3),('ذ',1,3),('ش',2,3),('ص',2,3),
+      ('ض',3,3),('ط',2,2),('ظ',4,2),('ق',2,3),('ك',3,3),('ل',1,3),
+      ('لا',2,2),('لإ',3,1),('ن',1,3),('ه',1,3),('و',1,3),('ؤ',10,1),
+      ('ي',1,3),('ء',8,1),('ئ أول الكلمة',10,2),('★',0,2),('ت',1,4),
+      ('ة',5,1),('ث',1,3),('ر',1,3),('ز',2,3),('س',1,3),('ع',2,3),
+      ('غ',4,3),('ف',1,3),('لأ',3,1),('لآ',3,1),('م',1,4),('يء',5,1),
+      ('ى',3,1),('ئ',8,1)
+    ) as v(letter,points,quantity)
+    cross join lateral generate_series(1,v.quantity);
+  else
+    raise exception 'Unsupported room language';
+  end if;
+
+  select jsonb_agg(user_id order by seat),
+         jsonb_object_agg(user_id::text,0)
+    into players_json,scores_json
+    from public.room_members where room_id=target_room and not is_withdrawn;
+
+  -- Each active player receives one comparison tile and seven private rack tiles.
+  for player in
+    select user_id,seat,row_number() over(order by seat)::integer as deal_index from public.room_members
+    where room_id=target_room and not is_withdrawn order by seat
+  loop
+    select tile into start_json from public.room_tile_bag
+      where room_id=target_room and position=player.deal_index;
+    select coalesce(jsonb_agg(tile order by position),'[]'::jsonb) into rack_json
+      from public.room_tile_bag
+      where room_id=target_room
+        and position between member_count+(player.deal_index-1)*7+1
+                          and member_count+player.deal_index*7;
+    if start_json is null or jsonb_array_length(rack_json)<>7 then
+      raise exception 'Not enough tiles to initialize every player';
+    end if;
+    insert into public.room_player_private(room_id,user_id,private_state)
+      values(target_room,player.user_id,jsonb_build_object('rack',rack_json,'starting_draw',start_json));
+  end loop;
+
+  dealt_count := member_count*8;
+  delete from public.room_tile_bag where room_id=target_room and position<=dealt_count;
+
+  select array_agg(seat order by seat) into eligible_seats
+    from public.room_members where room_id=target_room and not is_withdrawn;
+
+  -- Redraw only tied players. Every comparison tile is returned to the bag afterward.
+  for round_no in 1..100 loop
+    best_rank := 2147483647;
+    tied_seats := array[]::integer[];
+    draws_this_round := '[]'::jsonb;
+
+    foreach seat_index in array eligible_seats loop
+      select m.user_id, p.private_state->'starting_draw' as tile
+        into draw_row
+        from public.room_members m
+        join public.room_player_private p
+          on p.room_id=m.room_id and p.user_id=m.user_id
+        where m.room_id=target_room and m.seat=seat_index;
+      current_rank := public.scrabble_start_rank(draw_row.tile->>'letter',target.language);
+      draws_this_round := draws_this_round || jsonb_build_array(
+        jsonb_build_object('user_id',draw_row.user_id,'letter',draw_row.tile->>'letter')
+      );
+      if current_rank < best_rank then
+        best_rank := current_rank;
+        tied_seats := array[seat_index];
+      elsif current_rank = best_rank then
+        tied_seats := array_append(tied_seats,seat_index);
+      end if;
+    end loop;
+
+    all_draws := all_draws || jsonb_build_array(
+      jsonb_build_object('round',round_no,'draws',draws_this_round)
+    );
+
+    if cardinality(tied_seats)=1 then
+      chosen_seat := tied_seats[1];
+      exit;
+    end if;
+
+    if (select count(*) from public.room_tile_bag where room_id=target_room) < cardinality(tied_seats) then
+      raise exception 'Not enough tiles to resolve a starting-draw tie';
+    end if;
+
+    for draw_row in
+      select m.user_id, p.private_state->'starting_draw' as tile
+      from public.room_members m
+      join public.room_player_private p on p.room_id=m.room_id and p.user_id=m.user_id
+      where m.room_id=target_room and m.seat=any(tied_seats)
+    loop
+      select coalesce(max(position),0)+1 into returned_position
+        from public.room_tile_bag where room_id=target_room;
+      insert into public.room_tile_bag(room_id,position,tile)
+        values(target_room,returned_position,draw_row.tile);
+    end loop;
+
+    foreach seat_index in array tied_seats loop
+      select position,tile into draw_row
+        from public.room_tile_bag
+        where room_id=target_room
+        order by random()
+        limit 1
+        for update;
+      if not found then raise exception 'Not enough tiles for tie-break'; end if;
+      delete from public.room_tile_bag
+        where room_id=target_room and position=draw_row.position;
+      update public.room_player_private p
+        set private_state=jsonb_set(p.private_state,'{starting_draw}',draw_row.tile,true),
+            updated_at=now()
+        from public.room_members m
+        where p.room_id=target_room and p.user_id=m.user_id
+          and m.room_id=target_room and m.seat=seat_index;
+    end loop;
+
+    eligible_seats := tied_seats;
+  end loop;
+
+  if chosen_seat is null then raise exception 'Starting-draw tie-break did not resolve'; end if;
+
+  -- Return the final comparison tiles; they are not part of any player's rack.
+  for draw_row in
+    select private_state->'starting_draw' as tile
+    from public.room_player_private where room_id=target_room
+  loop
+    select coalesce(max(position),0)+1 into returned_position
+      from public.room_tile_bag where room_id=target_room;
+    insert into public.room_tile_bag(room_id,position,tile)
+      values(target_room,returned_position,draw_row.tile);
+  end loop;
+
+  select array_position(array_agg(user_id order by seat),
+      (select user_id from public.room_members where room_id=target_room and seat=chosen_seat))-1
+    into winner_index
+    from public.room_members where room_id=target_room and not is_withdrawn;
+
+  update public.rooms
+    set status='playing',
+        game_state=jsonb_build_object(
+          'phase','playing',
+          'player_ids',players_json,
+          'board',jsonb_build_array(),
+          'scores',scores_json,
+          'turn_index',winner_index,
+          'starter_user_id',(select user_id from public.room_members where room_id=target_room and seat=chosen_seat),
+          'starting_draws',all_draws,
+          'remaining_tiles',(select count(*) from public.room_tile_bag where room_id=target_room),
+          'revision',1
+        ),
+        updated_at=now()
+    where id=target_room returning * into target;
+  return target;
+end;
+$function$
+
+grant execute on function public.start_scrabble_room(uuid) to authenticated;
+
+-- Server-authoritative pass and exchange operations.
+create or replace function public.pass_scrabble_turn(target_room uuid, expected_revision integer)
+ RETURNS rooms
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $
+declare
+  target public.rooms;
+  player_ids jsonb;
+  current_index integer;
+  next_index integer;
+  player_count integer;
+  step integer;
+  next_user uuid;
+  pass_count integer;
+  active_count integer;
+  next_log jsonb;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+
+  select * into target
+  from public.rooms
+  where id=target_room
+  for update;
+
+  if not found or target.status <> 'playing' then
+    raise exception 'Match is not active';
+  end if;
+  if not public.is_scrabble_room_member(target_room) then
+    raise exception 'Room membership required';
+  end if;
+  if exists(
+    select 1 from public.room_members
+    where room_id=target_room and user_id=auth.uid() and is_withdrawn
+  ) then
+    raise exception 'Withdrawn players cannot take turns';
+  end if;
+
+  if coalesce((target.game_state->>'revision')::integer,0) <> expected_revision then
+    raise exception 'Game state changed; refresh and try again';
+  end if;
+
+  player_ids := target.game_state->'player_ids';
+  player_count := coalesce(jsonb_array_length(player_ids),0);
+  current_index := coalesce((target.game_state->>'turn_index')::integer,-1);
+
+  if player_count < 2 or current_index < 0 or current_index >= player_count then
+    raise exception 'Match player order is invalid';
+  end if;
+  if player_ids->>current_index <> auth.uid()::text then
+    raise exception 'It is not your turn';
+  end if;
+
+  next_index := -1;
+  next_user := null;
+  for step in 1..player_count loop
+    next_index := mod(current_index + step, player_count);
+    next_user := (player_ids->>next_index)::uuid;
+    if exists(
+      select 1 from public.room_members
+      where room_id=target_room and user_id=next_user and not is_withdrawn
+    ) then
+      exit;
+    end if;
+    next_user := null;
+  end loop;
+  if next_user is null then
+    raise exception 'No active players remain';
+  end if;
+
+  pass_count := coalesce((target.game_state->>'consecutive_passes')::integer,0)+1;
+  next_log := coalesce(target.game_state->'log','[]'::jsonb)
+    || jsonb_build_array(jsonb_build_object(
+      'type','pass',
+      'user_id',auth.uid(),
+      'at',now()
+    ));
+
+  update public.rooms
+  set game_state=target.game_state || jsonb_build_object(
+        'turn_index',next_index,
+        'consecutive_passes',pass_count,
+        'log',next_log,
+        'revision',expected_revision+1
+      ),
+      updated_at=now()
+  where id=target_room
+  returning * into target;
+
+  select count(*) into active_count from public.room_members where room_id=target_room and not is_withdrawn;
+  if pass_count >= active_count*2 then
+    return public.settle_scrabble_room(target_room,null,'consecutive_passes');
+  end if;
+  return target;
+end;
+$function$
+
+grant execute on function public.pass_scrabble_turn(uuid,integer) to authenticated;
+
+create or replace function public.exchange_scrabble_tiles(target_room uuid, expected_revision integer, tile_ids uuid[])
+ RETURNS rooms
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $exchange$
+declare
+  target public.rooms;
+  private_row public.room_player_private;
+  rack_json jsonb;
+  kept_rack jsonb;
+  drawn_tiles jsonb := '[]'::jsonb;
+  new_rack jsonb;
+  selected_tile jsonb;
+  selected_count integer;
+  unique_count integer;
+  bag_count integer;
+  player_ids jsonb;
+  player_count integer;
+  current_index integer;
+  next_index integer := -1;
+  next_user uuid;
+  step integer;
+  pass_count integer;
+  active_count integer;
+  next_log jsonb;
+  bag_position integer;
+  bag_row record;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  if tile_ids is null or cardinality(tile_ids) < 1 or cardinality(tile_ids) > 7 then
+    raise exception 'Choose between 1 and 7 tiles';
+  end if;
+  selected_count := cardinality(tile_ids);
+  select count(distinct selected_id) into unique_count
+    from unnest(tile_ids) as selected(selected_id);
+  if unique_count <> selected_count then raise exception 'Duplicate tile selection'; end if;
+
+  select * into target from public.rooms where id=target_room for update;
+  if not found or target.status <> 'playing' then raise exception 'Match is not active'; end if;
+  if not public.is_scrabble_room_member(target_room) then raise exception 'Room membership required'; end if;
+  if exists(select 1 from public.room_members where room_id=target_room and user_id=auth.uid() and is_withdrawn) then
+    raise exception 'Withdrawn players cannot take turns';
+  end if;
+  if coalesce((target.game_state->>'revision')::integer,0) <> expected_revision then
+    raise exception 'Game state changed; refresh and try again';
+  end if;
+
+  player_ids := target.game_state->'player_ids';
+  player_count := coalesce(jsonb_array_length(player_ids),0);
+  current_index := coalesce((target.game_state->>'turn_index')::integer,-1);
+  if player_count < 2 or current_index < 0 or current_index >= player_count
+     or player_ids->>current_index <> auth.uid()::text then
+    raise exception 'It is not your turn';
+  end if;
+
+  select * into private_row from public.room_player_private
+    where room_id=target_room and user_id=auth.uid() for update;
+  if not found then raise exception 'Your private rack was not found'; end if;
+  rack_json := private_row.private_state->'rack';
+  if jsonb_typeof(rack_json) is distinct from 'array' then raise exception 'Your rack is invalid'; end if;
+  if exists(
+    select 1 from unnest(tile_ids) as chosen(id)
+    where not exists(
+      select 1 from jsonb_array_elements(rack_json) as rack(rack_tile)
+      where rack.rack_tile->>'id'=chosen.id::text
+    )
+  ) then raise exception 'A selected tile is not in your rack'; end if;
+
+  select count(*) into bag_count from public.room_tile_bag where room_id=target_room;
+  if bag_count < 7 or bag_count < selected_count then raise exception 'At least seven tiles must remain in the bag to exchange'; end if;
+
+  for bag_row in
+    select position,tile from public.room_tile_bag
+    where room_id=target_room order by position limit selected_count for update
+  loop
+    drawn_tiles := drawn_tiles || jsonb_build_array(bag_row.tile);
+    delete from public.room_tile_bag where room_id=target_room and position=bag_row.position;
+  end loop;
+  if jsonb_array_length(drawn_tiles) <> selected_count then raise exception 'Could not draw replacement tiles'; end if;
+
+  select coalesce(jsonb_agg(rack_tile order by ordinal), '[]'::jsonb)
+    into kept_rack
+    from jsonb_array_elements(rack_json) with ordinality as rack(rack_tile,ordinal)
+    where not ((rack_tile->>'id') = any(array(select unnest(tile_ids)::text)));
+  new_rack := kept_rack || drawn_tiles;
+
+  select coalesce(max(position),0) into bag_position
+    from public.room_tile_bag where room_id=target_room;
+  for selected_tile in
+    select rack_tile
+    from jsonb_array_elements(rack_json) with ordinality as rack(rack_tile,ordinal)
+    where (rack_tile->>'id') = any(array(select unnest(tile_ids)::text))
+    order by ordinal
+  loop
+    bag_position := bag_position+1;
+    insert into public.room_tile_bag(room_id,position,tile)
+      values(target_room,bag_position,selected_tile);
+  end loop;
+
+  -- Return exchanged tiles to the bag, then shuffle the whole remaining bag.
+  update public.room_tile_bag
+    set position=position+bag_position+1000
+    where room_id=target_room;
+  with randomized as (
+    select position,row_number() over(order by random())::integer as new_position
+    from public.room_tile_bag where room_id=target_room
+  )
+  update public.room_tile_bag b
+    set position=randomized.new_position
+    from randomized
+    where b.room_id=target_room and b.position=randomized.position;
+
+  update public.room_player_private
+    set private_state=private_row.private_state || jsonb_build_object('rack',new_rack),
+        updated_at=now()
+    where room_id=target_room and user_id=auth.uid();
+
+  for step in 1..player_count loop
+    next_index := mod(current_index+step,player_count);
+    next_user := (player_ids->>next_index)::uuid;
+    if exists(select 1 from public.room_members where room_id=target_room and user_id=next_user and not is_withdrawn) then
+      exit;
+    end if;
+    next_user := null;
+  end loop;
+  if next_user is null then raise exception 'No active players remain'; end if;
+
+  pass_count := coalesce((target.game_state->>'consecutive_passes')::integer,0)+1;
+  next_log := coalesce(target.game_state->'log','[]'::jsonb)
+    || jsonb_build_array(jsonb_build_object('type','exchange','user_id',auth.uid(),'count',selected_count,'at',now()));
+
+  update public.rooms
+    set game_state=target.game_state || jsonb_build_object(
+      'turn_index',next_index,
+      'consecutive_passes',pass_count,
+      'remaining_tiles',(select count(*) from public.room_tile_bag where room_id=target_room),
+      'log',next_log,
+      'revision',expected_revision+1
+    ),
+    updated_at=now()
+    where id=target_room returning * into target;
+  select count(*) into active_count from public.room_members where room_id=target_room and not is_withdrawn;
+  if pass_count >= active_count*2 then
+    return public.settle_scrabble_room(target_room,null,'consecutive_passes');
+  end if;
+  return target;
+end;
+$function$
+
+grant execute on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) to authenticated;
+revoke all on function public.exchange_scrabble_tiles(uuid,integer,uuid[]) from public, anon;
