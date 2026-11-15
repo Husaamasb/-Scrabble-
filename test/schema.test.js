@@ -263,6 +263,8 @@ test('room host can start a rematch with the same active players and match rules
   assert.ok(schema.includes("previous.host_id <> auth.uid()"));
   assert.ok(schema.includes('previous.max_players, previous.end_condition, previous.language'));
   assert.ok(schema.includes('not is_withdrawn'));
+  assert.ok(schema.includes('insert into public.room_invites(room_id, sender_id, receiver_id)'));
+  assert.ok(schema.includes('where room_id = created.id and user_id <> auth.uid()'));
   assert.ok(schema.includes('revoke all on function public.rematch_scrabble_room(uuid) from public, anon'));
   assert.ok(schema.includes('grant execute on function public.rematch_scrabble_room(uuid) to authenticated'));
   const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
