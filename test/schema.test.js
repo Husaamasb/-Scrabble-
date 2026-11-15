@@ -154,3 +154,15 @@ test('the main profile route displays the authenticated cloud profile rather tha
   const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
   assert.ok(dashboard.includes("section==='profile'?'account':section"));
 });
+
+test('account settings persist privately for signed-in players',()=>{
+  assert.ok(schema.includes('create table if not exists public.scrabble_user_settings'));
+  assert.ok(schema.includes('players read own scrabble settings'));
+  assert.ok(schema.includes('players create own scrabble settings'));
+  assert.ok(schema.includes('players update own scrabble settings'));
+  const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
+  assert.ok(cloud.includes("supabase.from('scrabble_user_settings').upsert"));
+  assert.ok(cloud.includes('notification_preferences:preferences'));
+  const dashboard=readFileSync(new URL('../src/Dashboard.jsx',import.meta.url),'utf8');
+  assert.ok(dashboard.includes("section==='settings'&&cloudSignedIn"));
+});
