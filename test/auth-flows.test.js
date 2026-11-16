@@ -6,7 +6,8 @@ const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
 const authClient=readFileSync(new URL('../src/cloud/supabase.js',import.meta.url),'utf8');
 test('account UI wires email OTP, password recovery, and Google/Apple OAuth flows',()=>{
  for(const api of ['auth.signUp','auth.verifyOtp','auth.signInWithOtp','auth.resetPasswordForEmail','auth.signInWithOAuth','auth.updateUser']) assert.ok(cloud.includes(api),api);
- assert.ok(cloud.includes('supabase.auth.signInWithPassword({email:address,password})'));
+ assert.ok(cloud.includes('await verifyPasswordWithoutPersisting(address,password)'));
+ assert.ok(cloud.includes('supabase.auth.signInWithOtp({email:address,options:{shouldCreateUser:false,emailRedirectTo:AUTH_REDIRECT_URL}})'));
  assert.ok(cloud.includes("setAccountMode(v=>v==='login'?'signup':'login')"));
  assert.ok(cloud.includes("accountMode==='signup'?t.signup:t.login"));
  assert.ok(cloud.includes("setOtpType('signup')"));
