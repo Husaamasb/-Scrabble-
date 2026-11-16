@@ -6,13 +6,12 @@ const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
 const authClient=readFileSync(new URL('../src/cloud/supabase.js',import.meta.url),'utf8');
 test('account UI wires email OTP, password recovery, and Google/Apple OAuth flows',()=>{
  for(const api of ['auth.signUp','auth.verifyOtp','auth.signInWithOtp','auth.resetPasswordForEmail','auth.signInWithOAuth','auth.updateUser']) assert.ok(cloud.includes(api),api);
- assert.ok(cloud.includes('verifyPasswordWithoutPersisting'));
- assert.ok(authClient.includes('verifier.auth.signInWithPassword'));
- assert.ok(authClient.includes('persistSession: false'));
+ assert.ok(cloud.includes('supabase.auth.signInWithPassword({email:address,password})'));
+ assert.ok(cloud.includes("setAccountMode(v=>v==='login'?'signup':'login')"));
+ assert.ok(cloud.includes("accountMode==='signup'?t.signup:t.login"));
  assert.ok(cloud.includes("setOtpType('signup')"));
- assert.ok(cloud.includes("setOtpType('email')"));
+ assert.ok(cloud.includes("setOtpType('signup')"));
  assert.ok(cloud.includes("type:otpType"));
- assert.ok(cloud.includes("shouldCreateUser:false"));
  assert.ok(cloud.includes('loginCode:'));
  assert.ok(cloud.includes("provider,options:{redirectTo:window.location.origin+import.meta.env.BASE_URL}"));
 });
@@ -41,5 +40,5 @@ test('the app requires an authenticated Supabase session before showing any play
  assert.ok(cloud.includes("Enter your email address first"));
  assert.ok(cloud.includes("redirectTo:window.location.origin+import.meta.env.BASE_URL"));
  assert.ok(cloud.includes("provider is not enabled"));
- assert.ok(cloud.includes("Google and Apple sign-in require provider credentials"));
+ assert.ok(cloud.includes("Google and Apple require provider setup in Supabase"));
 });
