@@ -79,7 +79,7 @@ test('password login requires a verified email OTP before creating the main sess
   assert.ok(auth.includes('persistSession: false'));
   assert.ok(auth.includes("verifier.auth.signOut({ scope: 'local' })"));
   assert.ok(cloud.includes("setOtpType('email')"));
-  assert.ok(cloud.includes('supabase.auth.verifyOtp({email,token:otp,type:otpType})'));
+  assert.ok(cloud.includes('supabase.auth.verifyOtp({email:email.trim().toLowerCase(),token:otp,type:otpType})'));
   assert.ok(!cloud.includes('supabase.auth.signInWithPassword'));
 });
 
