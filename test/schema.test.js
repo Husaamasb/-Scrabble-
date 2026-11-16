@@ -74,7 +74,7 @@ test('password login requires a verified email OTP before creating the main sess
   const cloud=readFileSync(new URL('../src/CloudDashboard.jsx',import.meta.url),'utf8');
   const auth=readFileSync(new URL('../src/cloud/supabase.js',import.meta.url),'utf8');
   const passwordCheck=cloud.indexOf('await verifyPasswordWithoutPersisting(address,password)');
-  const otpSend=cloud.indexOf("supabase.auth.signInWithOtp({email:address,options:{shouldCreateUser:false}})");
+  const otpSend=cloud.indexOf("supabase.auth.signInWithOtp({email:address,options:{shouldCreateUser:false,emailRedirectTo:AUTH_REDIRECT_URL}})");
   assert.ok(passwordCheck>=0&&otpSend>passwordCheck);
   assert.ok(auth.includes('persistSession: false'));
   assert.ok(auth.includes("verifier.auth.signOut({ scope: 'local' })"));
