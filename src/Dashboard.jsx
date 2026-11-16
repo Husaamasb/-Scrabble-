@@ -2,7 +2,7 @@ import CloudDashboard from './CloudDashboard.jsx';
 import {isCloudConfigured,supabase} from './cloud/supabase.js';
 import React,{useEffect,useState} from 'react';
 const labels={ar:{profile:'ملفي',settings:'الإعدادات',friends:'الأصحاب',tournaments:'البطولات',account:'الحساب',rooms:'الغرف',online:'اللاعبين أونلاين',tasks:'المهام اليومية',store:'المتجر',notifications:'التنبيهات'},en:{profile:'Profile',settings:'Settings',friends:'Friends',tournaments:'Tournaments',account:'Account',rooms:'Rooms',online:'Online players',tasks:'Daily tasks',store:'Store',notifications:'Notifications'}};
-const base={name:'لاعب جديد',bio:'',privacy:'everyone',coins:100,xp:0,friends:[],messages:[],claimed:[],owned:[],sound:true,notice:{requests:true,invites:true,turns:true,results:true,daily:true,tournaments:true,messages:true,rewards:true,online:true}};
+const base={name:'لاعب جديد',bio:'',privacy:'everyone',coins:0,xp:0,friends:[],messages:[],claimed:[],owned:[],sound:true,notice:{requests:true,invites:true,turns:true,results:true,daily:true,tournaments:true,messages:true,rewards:true,online:true}};
 function load(){try{return {...base,...JSON.parse(localStorage.getItem('scrabble:dashboard:v1')||'{}')}}catch{return base}}
 export default function Dashboard({section,language,dark,onDark,onLanguage,onNavigate}){
  const ar=language==='ar',tx=(a,e)=>ar?a:e,[d,setD]=useState(load),[name,setName]=useState(d.name),[bio,setBio]=useState(d.bio),[friend,setFriend]=useState(''),[message,setMessage]=useState(''),[room,setRoom]=useState(''),[code,setCode]=useState('');
