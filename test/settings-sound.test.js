@@ -8,7 +8,7 @@ const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
 
 test('cloud settings initialize sound and notification preferences before rendering controls',()=>{
   assert.ok(cloud.includes('const [soundEnabled,setSoundEnabled]=useState(false)'));
-  assert.ok(cloud.includes('const [preferences,setPreferences]=useState('));
+  assert.ok(cloud.includes('[preferences,setPreferences]=useState('));
   assert.ok(cloud.includes('setPreferences(current=>({...current,...(data.notification_preferences||{})}))'));
   assert.ok(cloud.includes("localStorage?.setItem('scrabble:sound-enabled',String(Boolean(data.sound_enabled)))"));
   assert.ok(cloud.includes('onClick={saveUserSettings}'));
